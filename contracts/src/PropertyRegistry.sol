@@ -2,6 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {ProtocolTypes} from "./libraries/ProtocolTypes.sol";
+import {PropertyValueTokenFactory} from "./PropertyValueTokenFactory.sol";
+import {UsufructRightNFT} from "./UsufructRightNFT.sol";
 
 contract PropertyRegistry {
     bytes32 public constant MOCK_VERIFIER_ROLE =
@@ -30,6 +32,7 @@ contract PropertyRegistry {
     error InvalidMetadataHash();
     error InvalidDocumentsHash();
     error InvalidLocationHash();
+    error ExternalContractsNotConfigured();
 
     event OwnershipTransferred(
         address indexed previousOwner,
@@ -72,6 +75,20 @@ contract PropertyRegistry {
         uint256 indexed propertyId,
         ProtocolTypes.PropertyStatus previousStatus,
         ProtocolTypes.PropertyStatus newStatus
+    );
+    event PropertyTokenized(
+        uint256 indexed propertyId,
+        address indexed owner,
+        uint256 indexed tokenId,
+        uint256 linkedValueUnits,
+        uint256 freeValueUnits
+    );
+    event PropertyValueTokenCreated(
+        uint256 indexed propertyId,
+        address indexed valueToken,
+        address indexed owner,
+        uint256 freeValueUnits,
+        address authorizedOperator
     );
 
     constructor() {
@@ -195,6 +212,7 @@ contract PropertyRegistry {
             metadataHash: metadataHash,
             locationHash: locationHash,
             documentsHash: documentsHash,
+            valueToken: address(0),
             status: ProtocolTypes.PropertyStatus.PendingMockVerification
         });
 
@@ -244,6 +262,77 @@ contract PropertyRegistry {
             propertyId,
             previousStatus,
             ProtocolTypes.PropertyStatus.MockVerified
+        );
+    }
+
+    function tokenizeProperty(
+        uint256 propertyId
+    ) external returns (address valueToken) {
+        if (!propertyExists[propertyId]) {
+            revert PropertyNotFound();
+        }
+
+        ProtocolTypes.PropertyRecord storage property = properties[propertyId];
+        if (property.status != ProtocolTypes.PropertyStatus.MockVerified) {
+            revert InvalidPropertyStatus();
+        }
+
+        if (msg.sender != property.owner) {
+            revert Unauthorized();
+        }
+
+        if (
+            usufructRightNft == address(0) ||
+            propertyValueTokenFactory == address(0) ||
+            primaryValueSale == address(0)
+        ) {
+            revert ExternalContractsNotConfigured();
+        }
+
+        UsufructRightNFT(usufructRightNft).mintFromRegistry(
+            property.owner,
+            propertyId
+        );
+
+        usufructPositions[propertyId] = ProtocolTypes.UsufructPosition({
+            propertyId: propertyId,
+            tokenId: propertyId,
+            holder: property.owner,
+            linkedValueUnits: property.linkedValueUnits,
+            linkedValueBps: property.linkedValueBps,
+            active: true
+        });
+
+        valueToken = PropertyValueTokenFactory(propertyValueTokenFactory)
+            .createValueToken(
+                propertyId,
+                property.owner,
+                property.freeValueUnits
+            );
+
+        property.valueToken = valueToken;
+
+        ProtocolTypes.PropertyStatus previousStatus = property.status;
+        property.status = ProtocolTypes.PropertyStatus.Tokenized;
+
+        emit PropertyTokenized(
+            propertyId,
+            property.owner,
+            propertyId,
+            property.linkedValueUnits,
+            property.freeValueUnits
+        );
+        emit PropertyValueTokenCreated(
+            propertyId,
+            valueToken,
+            property.owner,
+            property.freeValueUnits,
+            primaryValueSale
+        );
+        emit PropertyStatusUpdated(
+            propertyId,
+            previousStatus,
+            ProtocolTypes.PropertyStatus.Tokenized
         );
     }
 

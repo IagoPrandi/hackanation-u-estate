@@ -56,3 +56,4 @@ broadcast/
 .AGENTS.md*
 .PRD.md*
 .WORKLOG.md*
+/.mock_docs/

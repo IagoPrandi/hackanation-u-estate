@@ -40,6 +40,13 @@ export const propertyRegistryAbi = [
     outputs: [],
   },
   {
+    type: "function",
+    stateMutability: "nonpayable",
+    name: "tokenizeProperty",
+    inputs: [{ name: "propertyId", type: "uint256" }],
+    outputs: [{ name: "valueToken", type: "address" }],
+  },
+  {
     type: "event",
     anonymous: false,
     name: "PropertyRegistered",
@@ -64,6 +71,30 @@ export const propertyRegistryAbi = [
       { indexed: true, name: "propertyId", type: "uint256" },
       { indexed: true, name: "verifier", type: "address" },
       { indexed: true, name: "owner", type: "address" },
+    ],
+  },
+  {
+    type: "event",
+    anonymous: false,
+    name: "PropertyTokenized",
+    inputs: [
+      { indexed: true, name: "propertyId", type: "uint256" },
+      { indexed: true, name: "owner", type: "address" },
+      { indexed: true, name: "tokenId", type: "uint256" },
+      { indexed: false, name: "linkedValueUnits", type: "uint256" },
+      { indexed: false, name: "freeValueUnits", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    anonymous: false,
+    name: "PropertyValueTokenCreated",
+    inputs: [
+      { indexed: true, name: "propertyId", type: "uint256" },
+      { indexed: true, name: "valueToken", type: "address" },
+      { indexed: true, name: "owner", type: "address" },
+      { indexed: false, name: "freeValueUnits", type: "uint256" },
+      { indexed: false, name: "authorizedOperator", type: "address" },
     ],
   },
 ] as const;

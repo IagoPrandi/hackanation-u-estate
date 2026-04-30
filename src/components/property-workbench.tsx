@@ -81,6 +81,8 @@ export function PropertyWorkbench({
   const { writeContractAsync, isPending: isRegisteringOnchain } = useWriteContract();
   const { writeContractAsync: writeMockVerificationAsync, isPending: isSubmittingMockVerification } =
     useWriteContract();
+  const { writeContractAsync: writeTokenizationAsync, isPending: isSubmittingTokenization } =
+    useWriteContract();
   const [draftLocalId, setDraftLocalId] = useState(() => crypto.randomUUID());
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [listedUnits] = useState("300000");
@@ -122,6 +124,19 @@ export function PropertyWorkbench({
   const [verificationNotice, setVerificationNotice] = useState<string | null>(
     null,
   );
+  const [tokenizingLocalPropertyId, setTokenizingLocalPropertyId] = useState<
+    string | null
+  >(null);
+  const [submittedTokenizationHash, setSubmittedTokenizationHash] =
+    useState<Hex | null>(null);
+  const [processedTokenizationHash, setProcessedTokenizationHash] =
+    useState<Hex | null>(null);
+  const [tokenizationErrorMessage, setTokenizationErrorMessage] = useState<
+    string | null
+  >(null);
+  const [tokenizationNotice, setTokenizationNotice] = useState<string | null>(
+    null,
+  );
   const {
     data: registrationReceipt,
     error: registrationReceiptError,
@@ -142,6 +157,17 @@ export function PropertyWorkbench({
     hash: submittedVerificationHash ?? undefined,
     query: {
       enabled: Boolean(submittedVerificationHash),
+    },
+  });
+  const {
+    data: tokenizationReceipt,
+    error: tokenizationReceiptError,
+    isLoading: isConfirmingTokenization,
+  } = useWaitForTransactionReceipt({
+    chainId: sepolia.id,
+    hash: submittedTokenizationHash ?? undefined,
+    query: {
+      enabled: Boolean(submittedTokenizationHash),
     },
   });
 
@@ -357,16 +383,116 @@ export function PropertyWorkbench({
     verifyingLocalPropertyId,
   ]);
 
+  useEffect(() => {
+    if (
+      !tokenizationReceipt ||
+      !tokenizingLocalPropertyId ||
+      processedTokenizationHash === tokenizationReceipt.transactionHash
+    ) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        setProcessedTokenizationHash(tokenizationReceipt.transactionHash);
+
+        const [propertyTokenizedLog] = parseEventLogs({
+          abi: propertyRegistryAbi,
+          eventName: "PropertyTokenized",
+          logs: tokenizationReceipt.logs,
+          strict: true,
+        });
+        const [propertyValueTokenCreatedLog] = parseEventLogs({
+          abi: propertyRegistryAbi,
+          eventName: "PropertyValueTokenCreated",
+          logs: tokenizationReceipt.logs,
+          strict: true,
+        });
+
+        if (!propertyTokenizedLog || !propertyValueTokenCreatedLog) {
+          throw new Error(
+            "Transaction confirmed, but tokenization events were not found.",
+          );
+        }
+
+        const response = await fetch("/api/properties", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "tokenization",
+            localPropertyId: tokenizingLocalPropertyId,
+            propertyId: propertyTokenizedLog.args.propertyId.toString(),
+            txHash: tokenizationReceipt.transactionHash,
+            valueTokenAddress: propertyValueTokenCreatedLog.args.valueToken,
+            usufructTokenId: propertyTokenizedLog.args.tokenId.toString(),
+            linkedValueUnits:
+              propertyTokenizedLog.args.linkedValueUnits.toString(),
+            freeValueUnits: propertyTokenizedLog.args.freeValueUnits.toString(),
+          }),
+        });
+
+        const payload = (await response.json()) as
+          | { record: SavedPropertyRecord }
+          | { error: string };
+
+        if (!response.ok || !("record" in payload)) {
+          throw new Error(
+            "error" in payload
+              ? payload.error
+              : "Could not persist the property tokenization locally.",
+          );
+        }
+
+        setProperties((current) =>
+          current.map((property) =>
+            property.localPropertyId === payload.record.localPropertyId
+              ? payload.record
+              : property,
+          ),
+        );
+        setLastSaved((current) =>
+          current?.localPropertyId === payload.record.localPropertyId
+            ? payload.record
+            : current,
+        );
+        setTokenizationNotice(
+          `Property #${propertyTokenizedLog.args.propertyId.toString()} tokenized on-chain.`,
+        );
+        setTokenizationErrorMessage(null);
+      } catch (error) {
+        setTokenizationErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Tokenization persistence failed.",
+        );
+        setTokenizationNotice(null);
+      } finally {
+        setTokenizingLocalPropertyId(null);
+      }
+    })();
+  }, [
+    processedTokenizationHash,
+    tokenizationReceipt,
+    tokenizingLocalPropertyId,
+  ]);
+
   const registeredPropertiesCount = properties.filter(
     (property) => property.onchainRegistration,
   ).length;
   const mockVerifiedPropertiesCount = properties.filter(
     (property) => property.onchainRegistration?.status === "MockVerified",
   ).length;
+  const tokenizedPropertiesCount = properties.filter(
+    (property) => property.onchainRegistration?.status === "Tokenized",
+  ).length;
   const activeRegistrationErrorMessage =
     registrationReceiptError?.message ?? registrationErrorMessage;
   const activeVerificationErrorMessage =
     verificationReceiptError?.message ?? verificationErrorMessage;
+  const activeTokenizationErrorMessage =
+    tokenizationReceiptError?.message ?? tokenizationErrorMessage;
 
   const marketValuePreview = useMemo(() => {
     try {
@@ -664,19 +790,91 @@ export function PropertyWorkbench({
     }
   };
 
+  const handleTokenization = async (property: SavedPropertyRecord) => {
+    if (!address || !isConnected) {
+      setTokenizationErrorMessage(
+        "Connect a wallet before tokenizing the property.",
+      );
+      return;
+    }
+
+    if (chainId !== sepolia.id) {
+      setTokenizationErrorMessage("Switch the wallet to Sepolia first.");
+      return;
+    }
+
+    if (!propertyRegistryAddress) {
+      setTokenizationErrorMessage(
+        "NEXT_PUBLIC_PROPERTY_REGISTRY_ADDRESS is not configured.",
+      );
+      return;
+    }
+
+    if (!property.onchainRegistration) {
+      setTokenizationErrorMessage(
+        "Register the property on-chain before tokenization.",
+      );
+      return;
+    }
+
+    if (property.ownerWallet.toLowerCase() !== address.toLowerCase()) {
+      setTokenizationErrorMessage(
+        "Only the draft owner wallet can tokenize this property.",
+      );
+      return;
+    }
+
+    if (property.onchainRegistration.status !== "MockVerified") {
+      setTokenizationErrorMessage(
+        property.onchainRegistration.status === "Tokenized"
+          ? "This property is already tokenized."
+          : "Approve mock documents before tokenization.",
+      );
+      return;
+    }
+
+    setTokenizationErrorMessage(null);
+    setTokenizationNotice(null);
+    setTokenizingLocalPropertyId(property.localPropertyId);
+
+    try {
+      const txHash = await writeTokenizationAsync({
+        address: propertyRegistryAddress,
+        abi: propertyRegistryAbi,
+        functionName: "tokenizeProperty",
+        args: [BigInt(property.onchainRegistration.propertyId)],
+        chainId: sepolia.id,
+      });
+
+      setSubmittedTokenizationHash(txHash);
+      setProcessedTokenizationHash(null);
+      setTokenizationNotice(
+        `Tokenization tx submitted: ${shortenHash(txHash)}. Waiting for confirmation.`,
+      );
+    } catch (error) {
+      setTokenizingLocalPropertyId(null);
+      setTokenizationErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not submit the tokenization transaction.",
+      );
+    }
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <section className="glass-panel overflow-hidden rounded-[2rem]">
         <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:px-10 lg:py-10">
           <div className="space-y-6">
             <div className="space-y-3">
-              <p className="soft-label">Milestone 0.5</p>
+              <p className="soft-label">Milestone 0.6</p>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
-                Approve mock documents after the property is registered.
+                Tokenize the verified property into usufruct and free value.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                The flow now carries property drafts from registration into mock
-                verification, with owner or verifier-role approval on Sepolia.
+                The flow now carries each draft from registration into mock verification and
+                then into on-chain tokenization with a non-transferable usufruct NFT plus a
+                restricted free-value ERC-20.
               </p>
             </div>
 
@@ -707,6 +905,10 @@ export function PropertyWorkbench({
                 label="Mock verified"
                 value={`${mockVerifiedPropertiesCount}/${registeredPropertiesCount}`}
               />
+              <StatCard
+                label="Tokenized"
+                value={`${tokenizedPropertiesCount}/${registeredPropertiesCount}`}
+              />
             </div>
 
             {fiatErrorMessage ? (
@@ -724,7 +926,7 @@ export function PropertyWorkbench({
             {!propertyRegistryAddress ? (
               <Notice tone="warning">
                 Set `NEXT_PUBLIC_PROPERTY_REGISTRY_ADDRESS` to enable on-chain
-                registration from the dashboard.
+                registration and tokenization from the dashboard.
               </Notice>
             ) : null}
 
@@ -746,6 +948,16 @@ export function PropertyWorkbench({
 
             {activeVerificationErrorMessage ? (
               <Notice tone="danger">{activeVerificationErrorMessage}</Notice>
+            ) : null}
+
+            {tokenizationNotice && !activeTokenizationErrorMessage ? (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900">
+                {tokenizationNotice}
+              </div>
+            ) : null}
+
+            {activeTokenizationErrorMessage ? (
+              <Notice tone="danger">{activeTokenizationErrorMessage}</Notice>
             ) : null}
           </div>
 
@@ -1118,6 +1330,26 @@ export function PropertyWorkbench({
                           </span>
                         </p>
                       ) : null}
+                      {lastSaved.onchainRegistration.tokenizationTxHash ? (
+                        <p className="md:col-span-2">
+                          <span className="font-semibold text-foreground">
+                            Tokenization tx:
+                          </span>{" "}
+                          <span className="mono break-all">
+                            {lastSaved.onchainRegistration.tokenizationTxHash}
+                          </span>
+                        </p>
+                      ) : null}
+                      {lastSaved.onchainRegistration.valueTokenAddress ? (
+                        <p className="md:col-span-2">
+                          <span className="font-semibold text-foreground">
+                            Value token:
+                          </span>{" "}
+                          <span className="mono break-all">
+                            {lastSaved.onchainRegistration.valueTokenAddress}
+                          </span>
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}
@@ -1157,6 +1389,8 @@ export function PropertyWorkbench({
                     registeringLocalPropertyId === property.localPropertyId;
                   const isCurrentVerification =
                     verifyingLocalPropertyId === property.localPropertyId;
+                  const isCurrentTokenization =
+                    tokenizingLocalPropertyId === property.localPropertyId;
                   const registerButtonDisabled =
                     !isConnected ||
                     !isDraftOwner ||
@@ -1182,13 +1416,32 @@ export function PropertyWorkbench({
                     isSubmittingMockVerification ||
                     isConfirmingVerification;
                   const verifyButtonLabel =
-                    property.onchainRegistration?.status === "MockVerified"
+                    property.onchainRegistration?.status === "Tokenized"
+                      ? "Already tokenized"
+                      : property.onchainRegistration?.status === "MockVerified"
                       ? "Mock verified"
                       : isCurrentVerification && isSubmittingMockVerification
                         ? "Submitting verification..."
                         : isCurrentVerification && isConfirmingVerification
                           ? "Waiting for verification..."
                           : "Approve mock documents";
+                  const tokenizeButtonDisabled =
+                    !isConnected ||
+                    !isDraftOwner ||
+                    chainId !== sepolia.id ||
+                    !propertyRegistryAddress ||
+                    !property.onchainRegistration ||
+                    property.onchainRegistration.status !== "MockVerified" ||
+                    isSubmittingTokenization ||
+                    isConfirmingTokenization;
+                  const tokenizeButtonLabel =
+                    property.onchainRegistration?.status === "Tokenized"
+                      ? "Tokenized"
+                      : isCurrentTokenization && isSubmittingTokenization
+                        ? "Submitting tokenization..."
+                        : isCurrentTokenization && isConfirmingTokenization
+                          ? "Waiting for tokenization..."
+                          : "Tokenize property";
 
                   return (
                     <article
@@ -1289,6 +1542,22 @@ export function PropertyWorkbench({
                                 </p>
                               </div>
                             ) : null}
+                            {property.onchainRegistration.tokenizationTxHash ? (
+                              <div className="md:col-span-2">
+                                <p className="soft-label">Tokenization tx</p>
+                                <p className="mono mt-1 break-all text-foreground">
+                                  {property.onchainRegistration.tokenizationTxHash}
+                                </p>
+                              </div>
+                            ) : null}
+                            {property.onchainRegistration.valueTokenAddress ? (
+                              <div className="md:col-span-2">
+                                <p className="soft-label">Value token address</p>
+                                <p className="mono mt-1 break-all text-foreground">
+                                  {property.onchainRegistration.valueTokenAddress}
+                                </p>
+                              </div>
+                            ) : null}
                           </div>
                         ) : (
                           <p className="mt-4 text-sm leading-7 text-muted">
@@ -1358,6 +1627,88 @@ export function PropertyWorkbench({
                             {property.onchainRegistration?.status === "MockVerified" ? (
                               <span className="text-sm text-muted">
                                 Mock verification already completed for this property.
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 rounded-3xl border border-dashed border-line bg-white/70 p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="soft-label">Tokenization</p>
+                              <p className="mt-2 text-sm text-muted">
+                                Mint the usufruct NFT and the free-value ERC-20 after mock
+                                verification completes.
+                              </p>
+                            </div>
+                            {property.onchainRegistration ? (
+                              <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                                {property.onchainRegistration.status}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {property.onchainRegistration?.status === "Tokenized" ? (
+                            <div className="mt-4 grid gap-3 text-sm text-muted md:grid-cols-2">
+                              <div>
+                                <p className="soft-label">Usufruct token id</p>
+                                <p className="mono mt-1 text-foreground">
+                                  {property.onchainRegistration.usufructTokenId}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="soft-label">Free value units</p>
+                                <p className="mono mt-1 text-foreground">
+                                  {formatDecimalForDisplay(
+                                    property.onchainRegistration.freeValueUnits ?? "0",
+                                    0,
+                                  )}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="soft-label">Linked value units</p>
+                                <p className="mono mt-1 text-foreground">
+                                  {formatDecimalForDisplay(
+                                    property.onchainRegistration.linkedValueUnits ?? "0",
+                                    0,
+                                  )}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="soft-label">Token decimals</p>
+                                <p className="mono mt-1 text-foreground">0</p>
+                              </div>
+                            </div>
+                          ) : null}
+
+                          <div className="mt-4 flex flex-wrap items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleTokenization(property);
+                              }}
+                              disabled={tokenizeButtonDisabled}
+                              className="inline-flex items-center justify-center rounded-full border border-emerald-600/20 bg-emerald-600/10 px-4 py-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-600/15 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {tokenizeButtonLabel}
+                            </button>
+
+                            {!property.onchainRegistration ? (
+                              <span className="text-sm text-muted">
+                                Register first. Then approve mock documents before tokenization.
+                              </span>
+                            ) : null}
+
+                            {property.onchainRegistration?.status === "PendingMockVerification" ? (
+                              <span className="text-sm text-muted">
+                                Mock verification is still pending for this property.
+                              </span>
+                            ) : null}
+
+                            {property.onchainRegistration?.status === "Tokenized" ? (
+                              <span className="text-sm text-muted">
+                                Tokenization is complete. The owner now holds the usufruct NFT and
+                                the free-value token supply.
                               </span>
                             ) : null}
                           </div>

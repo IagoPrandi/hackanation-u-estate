@@ -1,16 +1,16 @@
-# PRD Técnico — Usufruct Protocol
+﻿# PRD TÃ©cnico â€” Usufruct Protocol
 
-**Fase:** 0 — Hackathon MVP  
-**Versão:** PRD refinado com Docker, OKX, escrow explícito, preço proporcional e mappings de existência  
+**Fase:** 0 â€” Hackathon MVP  
+**VersÃ£o:** PRD refinado com Docker, OKX, escrow explÃ­cito, preÃ§o proporcional e mappings de existÃªncia  
 **Rede:** Ethereum Sepolia  
 **Smart contracts:** Solidity  
-**Framework de contratos:** Foundry, executado fora do container da aplicação  
-**Aplicação:** Next.js + TypeScript + Tailwind rodando localmente em Node.js via Docker  
+**Framework de contratos:** Foundry, executado fora do container da aplicaÃ§Ã£o  
+**AplicaÃ§Ã£o:** Next.js + TypeScript + Tailwind rodando localmente em Node.js via Docker  
 **Web3:** wagmi + viem  
 **Pagamento no MVP:** ETH nativo  
-**Dados off-chain:** banco local não estruturado via lowdb  
+**Dados off-chain:** banco local nÃ£o estruturado via lowdb  
 **Documentos:** mockados  
-**Cotação fiduciária:** OKX via API server-side local  
+**CotaÃ§Ã£o fiduciÃ¡ria:** OKX via API server-side local  
 
 ---
 
@@ -21,89 +21,89 @@ A Fase 0 deve demonstrar o seguinte fluxo:
 1. Uma pessoa possui uma casa no mundo real.
 2. Essa pessoa tokeniza a casa na plataforma.
 3. Ela envia documentos mockados.
-4. Ela informa valor de mercado, endereço e localização exata.
-5. Os dados sensíveis ficam salvos off-chain em banco local não estruturado.
-6. Hashes/referências dos dados são registrados on-chain.
+4. Ela informa valor de mercado, endereÃ§o e localizaÃ§Ã£o exata.
+5. Os dados sensÃ­veis ficam salvos off-chain em banco local nÃ£o estruturado.
+6. Hashes/referÃªncias dos dados sÃ£o registrados on-chain.
 7. O sistema gera:
    - um token de Direito de Usufruto;
-   - uma posição de Direito de Valor Vinculado ao usufruto;
+   - uma posiÃ§Ã£o de Direito de Valor Vinculado ao usufruto;
    - tokens de Direito de Valor Livre.
-8. A proprietária fica com o Direito de Usufruto.
-9. A proprietária fica com o Direito de Valor Vinculado.
-10. A proprietária recebe os tokens de Direito de Valor Livre.
-11. A proprietária escolhe quanto do Direito de Valor Livre quer vender.
-12. O contrato calcula automaticamente o preço proporcional da oferta em ETH.
+8. A proprietÃ¡ria fica com o Direito de Usufruto.
+9. A proprietÃ¡ria fica com o Direito de Valor Vinculado.
+10. A proprietÃ¡ria recebe os tokens de Direito de Valor Livre.
+11. A proprietÃ¡ria escolhe quanto do Direito de Valor Livre quer vender.
+12. O contrato calcula automaticamente o preÃ§o proporcional da oferta em ETH.
 13. Uma pessoa compra esse Direito de Valor Livre.
 14. A vendedora recebe ETH na wallet.
 15. O comprador recebe tokens de Direito de Valor Livre.
-16. A interface exibe valores em ETH e equivalentes fiduciários em BRL e USD.
+16. A interface exibe valores em ETH e equivalentes fiduciÃ¡rios em BRL e USD.
 
-A tese demonstrada é:
+A tese demonstrada Ã©:
 
-> A proprietária mantém o direito de uso da casa e uma participação econômica vinculada ao usufruto, enquanto vende parte do valor livre do imóvel para captar liquidez.
+> A proprietÃ¡ria mantÃ©m o direito de uso da casa e uma participaÃ§Ã£o econÃ´mica vinculada ao usufruto, enquanto vende parte do valor livre do imÃ³vel para captar liquidez.
 
 ---
 
-## 2. Decisões técnicas fechadas
+## 2. DecisÃµes tÃ©cnicas fechadas
 
-| Tema | Decisão |
+| Tema | DecisÃ£o |
 |---|---|
 | Rede | Ethereum Sepolia |
 | Smart contracts | Solidity |
 | Framework de contratos | Foundry |
-| Execução de deploy | Fora do container app |
-| Aplicação | Next.js local em Node.js |
-| Containerização | Docker / Docker Compose |
+| ExecuÃ§Ã£o de deploy | Fora do container app |
+| AplicaÃ§Ã£o | Next.js local em Node.js |
+| ContainerizaÃ§Ã£o | Docker / Docker Compose |
 | Web3 client | wagmi + viem |
 | Pagamento | ETH nativo |
-| Cotação fiduciária | OKX via API server-side local |
-| Rota principal de cotação | ETH → USDC → BRL |
-| USD | Aproximação via ETH/USDC |
-| BRL | ETH/USDC × USDC/BRL |
-| EUR/JPY | Suporte condicional se houver rota OKX pública configurada |
+| CotaÃ§Ã£o fiduciÃ¡ria | OKX via API server-side local |
+| Rota principal de cotaÃ§Ã£o | ETH â†’ USDC â†’ BRL |
+| USD | AproximaÃ§Ã£o via ETH/USDC |
+| BRL | ETH/USDC Ã— USDC/BRL |
+| EUR/JPY | Suporte condicional se houver rota OKX pÃºblica configurada |
 | Documentos | Mockados |
 | Armazenamento off-chain | lowdb em `db.json` |
 | Escrita no banco local | Apenas via camada server-side local |
 | Token de usufruto | ERC-721 restrito |
-| Contrato de usufruto | Contrato único `UsufructRightNFT` |
+| Contrato de usufruto | Contrato Ãºnico `UsufructRightNFT` |
 | `tokenId` do usufruto | Igual ao `propertyId` |
-| Direito de Valor Vinculado | Campo interno da posição de usufruto |
-| Direito de Valor Livre | ERC-20 restrito por imóvel |
-| Criação do ERC-20 | `PropertyValueTokenFactory` |
+| Direito de Valor Vinculado | Campo interno da posiÃ§Ã£o de usufruto |
+| Direito de Valor Livre | ERC-20 restrito por imÃ³vel |
+| CriaÃ§Ã£o do ERC-20 | `PropertyValueTokenFactory` |
 | `decimals` do ERC-20 | `0` |
-| Transferência do Direito de Valor Livre | Apenas dentro da plataforma |
+| TransferÃªncia do Direito de Valor Livre | Apenas dentro da plataforma |
 | Marketplace interno | Listing simples |
-| Compra parcial da oferta | Não implementada na Fase 0 |
+| Compra parcial da oferta | NÃ£o implementada na Fase 0 |
 | Compra da oferta | Compra total |
-| Preço da oferta | Calculado automaticamente de forma proporcional |
-| Verificação documental | Mockada |
-| Transferência direta do ERC-20 | Reverte |
+| PreÃ§o da oferta | Calculado automaticamente de forma proporcional |
+| VerificaÃ§Ã£o documental | Mockada |
+| TransferÃªncia direta do ERC-20 | Reverte |
 | `approve` do ERC-20 | Reverte |
-| Transferência direta do ERC-721 | Reverte |
+| TransferÃªncia direta do ERC-721 | Reverte |
 | `approve` / `setApprovalForAll` do ERC-721 | Revertem |
-| Compradores podem revender na Fase 0 | Não |
-| `Paused` | Não usado na Fase 0 |
+| Compradores podem revender na Fase 0 | NÃ£o |
+| `Paused` | NÃ£o usado na Fase 0 |
 
 ---
 
-## 3. Execução local com Docker
+## 3. ExecuÃ§Ã£o local com Docker
 
-A aplicação deve rodar localmente via Docker/Docker Compose.
+A aplicaÃ§Ã£o deve rodar localmente via Docker/Docker Compose.
 
 ### 3.1 Container `app`
 
-Responsável por:
+ResponsÃ¡vel por:
 
-- executar a aplicação Next.js;
+- executar a aplicaÃ§Ã£o Next.js;
 - expor a interface local;
 - executar API routes/server actions;
 - gravar e ler o banco local `db.json`;
 - consultar OKX via server-side;
 - expor dados para o frontend.
 
-O container `app` **não** executa deploy de contratos.
+O container `app` **nÃ£o** executa deploy de contratos.
 
-O container `app` **não** contém `DEPLOYER_PRIVATE_KEY`.
+O container `app` **nÃ£o** contÃ©m `DEPLOYER_PRIVATE_KEY`.
 
 ### 3.2 Foundry/deploy
 
@@ -114,9 +114,9 @@ O deploy pode ser executado:
 - diretamente no host local do desenvolvedor; ou
 - em um container separado de contratos, se a equipe desejar.
 
-O ambiente de deploy possui `.env.deploy` próprio.
+O ambiente de deploy possui `.env.deploy` prÃ³prio.
 
-### 3.3 Persistência local
+### 3.3 PersistÃªncia local
 
 O banco local deve ser persistido em volume Docker.
 
@@ -135,15 +135,15 @@ offchain-db/
 
 ---
 
-## 4. Variáveis de ambiente
+## 4. VariÃ¡veis de ambiente
 
-A Fase 0 deve separar variáveis da aplicação e variáveis de deploy.
+A Fase 0 deve separar variÃ¡veis da aplicaÃ§Ã£o e variÃ¡veis de deploy.
 
 ### 4.1 `.env.app`
 
 Usado pelo container Next.js.
 
-Não deve conter chave privada.
+NÃ£o deve conter chave privada.
 
 ```env
 NEXT_PUBLIC_CHAIN_ID=11155111
@@ -178,15 +178,15 @@ DEPLOYER_PRIVATE_KEY=
 MOCK_VERIFIER_ADDRESS=
 ```
 
-### 4.3 Regra obrigatória
+### 4.3 Regra obrigatÃ³ria
 
 ```text
-DEPLOYER_PRIVATE_KEY nunca deve entrar no .env.app nem na imagem Docker da aplicação.
+DEPLOYER_PRIVATE_KEY nunca deve entrar no .env.app nem na imagem Docker da aplicaÃ§Ã£o.
 ```
 
 ---
 
-## 5. Ordem de deploy e configuração
+## 5. Ordem de deploy e configuraÃ§Ã£o
 
 ### 5.1 Ordem de deploy
 
@@ -195,33 +195,33 @@ DEPLOYER_PRIVATE_KEY nunca deve entrar no .env.app nem na imagem Docker da aplic
 3. Deploy `PropertyRegistry`.
 4. Deploy `PrimaryValueSale`.
 5. Configurar `PropertyRegistry` com:
-   - endereço de `UsufructRightNFT`;
-   - endereço de `PropertyValueTokenFactory`;
-   - endereço de `PrimaryValueSale`.
+   - endereÃ§o de `UsufructRightNFT`;
+   - endereÃ§o de `PropertyValueTokenFactory`;
+   - endereÃ§o de `PrimaryValueSale`.
 6. Configurar `UsufructRightNFT`:
-   - `PropertyRegistry` como único minter;
-   - operadores autorizados apenas se necessários.
+   - `PropertyRegistry` como Ãºnico minter;
+   - operadores autorizados apenas se necessÃ¡rios.
 7. Configurar `PropertyValueTokenFactory`:
-   - `PropertyRegistry` como único caller autorizado.
+   - `PropertyRegistry` como Ãºnico caller autorizado.
 8. Configurar `PrimaryValueSale`:
-   - endereço de `PropertyRegistry`.
+   - endereÃ§o de `PropertyRegistry`.
 9. Durante `tokenizeProperty`, cada `PropertyValueToken` criado deve autorizar `PrimaryValueSale` como operador.
 
 ### 5.2 Responsabilidades por contrato
 
-| Contrato | Responsabilidade de configuração |
+| Contrato | Responsabilidade de configuraÃ§Ã£o |
 |---|---|
-| `PropertyRegistry` | owner/admin configura endereços externos |
+| `PropertyRegistry` | owner/admin configura endereÃ§os externos |
 | `UsufructRightNFT` | owner/admin configura minter e operadores |
 | `PropertyValueTokenFactory` | owner/admin configura registry autorizado |
 | `PropertyValueToken` | factory/admin configura operador inicial |
-| `PrimaryValueSale` | usa registry para validar imóvel, owner e token |
+| `PrimaryValueSale` | usa registry para validar imÃ³vel, owner e token |
 
 ---
 
-## 6. Modelo econômico da Fase 0
+## 6. Modelo econÃ´mico da Fase 0
 
-Cada imóvel tokenizado será representado economicamente por um total fixo de unidades inteiras.
+Cada imÃ³vel tokenizado serÃ¡ representado economicamente por um total fixo de unidades inteiras.
 
 ```solidity
 uint256 constant TOTAL_VALUE_UNITS = 1_000_000;
@@ -232,32 +232,32 @@ Exemplo-base:
 
 | Componente | Percentual | Unidades |
 |---|---:|---:|
-| Valor econômico total | 100% | 1.000.000 |
+| Valor econÃ´mico total | 100% | 1.000.000 |
 | Direito de Valor Vinculado ao usufruto | 20% | 200.000 |
 | Direito de Valor Livre | 80% | 800.000 |
 
 No MVP:
 
 ```text
-Total econômico = Direito de Valor Vinculado + Direito de Valor Livre
+Total econÃ´mico = Direito de Valor Vinculado + Direito de Valor Livre
 1.000.000 = 200.000 + 800.000
 ```
 
-A proprietária recebe:
+A proprietÃ¡ria recebe:
 
 ```text
 1 NFT de usufruto
-+ 200.000 unidades vinculadas dentro da posição de usufruto
++ 200.000 unidades vinculadas dentro da posiÃ§Ã£o de usufruto
 + 800.000 tokens ERC-20 de Direito de Valor Livre
 ```
 
-Todas as quantidades são inteiras.
+Todas as quantidades sÃ£o inteiras.
 
 O `PropertyValueToken` usa `decimals = 0`.
 
 ---
 
-## 7. Diferença entre os tipos de direito
+## 7. DiferenÃ§a entre os tipos de direito
 
 ### 7.1 Direito de Usufruto
 
@@ -265,25 +265,25 @@ O Direito de Usufruto representa o direito de uso da casa.
 
 Na Fase 0:
 
-- é representado por um ERC-721 restrito;
-- existe um único contrato `UsufructRightNFT`;
-- cada imóvel tokenizado tem `tokenId = propertyId`;
-- o NFT é mintado para a proprietária;
-- não é vendido;
-- não pode ser transferido diretamente pela wallet;
-- carrega uma posição interna com o Direito de Valor Vinculado.
+- Ã© representado por um ERC-721 restrito;
+- existe um Ãºnico contrato `UsufructRightNFT`;
+- cada imÃ³vel tokenizado tem `tokenId = propertyId`;
+- o NFT Ã© mintado para a proprietÃ¡ria;
+- nÃ£o Ã© vendido;
+- nÃ£o pode ser transferido diretamente pela wallet;
+- carrega uma posiÃ§Ã£o interna com o Direito de Valor Vinculado.
 
 ---
 
 ### 7.2 Direito de Valor Vinculado ao Usufruto
 
-O Direito de Valor Vinculado é a participação econômica que fica presa ao usufruto.
+O Direito de Valor Vinculado Ã© a participaÃ§Ã£o econÃ´mica que fica presa ao usufruto.
 
-Ele **não é ERC-20**.
+Ele **nÃ£o Ã© ERC-20**.
 
-Ele **não é um token separado**.
+Ele **nÃ£o Ã© um token separado**.
 
-Ele é um campo interno da posição de usufruto associada ao NFT.
+Ele Ã© um campo interno da posiÃ§Ã£o de usufruto associada ao NFT.
 
 ```solidity
 struct UsufructPosition {
@@ -301,35 +301,35 @@ struct UsufructPosition {
 Regra principal:
 
 ```text
-O Direito de Valor Vinculado não pode ser vendido separadamente.
-Ele só se move junto com o NFT de usufruto.
+O Direito de Valor Vinculado nÃ£o pode ser vendido separadamente.
+Ele sÃ³ se move junto com o NFT de usufruto.
 ```
 
-Na Fase 0, como o NFT de usufruto não é vendido, o Direito de Valor Vinculado permanece com a proprietária.
+Na Fase 0, como o NFT de usufruto nÃ£o Ã© vendido, o Direito de Valor Vinculado permanece com a proprietÃ¡ria.
 
 ---
 
 ### 7.3 Direito de Valor Livre
 
-O Direito de Valor Livre representa a parte econômica negociável do imóvel.
+O Direito de Valor Livre representa a parte econÃ´mica negociÃ¡vel do imÃ³vel.
 
 Na Fase 0:
 
-- é representado por ERC-20 restrito;
-- cada imóvel tem seu próprio ERC-20;
-- o ERC-20 é criado por `PropertyValueTokenFactory`;
+- Ã© representado por ERC-20 restrito;
+- cada imÃ³vel tem seu prÃ³prio ERC-20;
+- o ERC-20 Ã© criado por `PropertyValueTokenFactory`;
 - o supply mintado equivale apenas ao Direito de Valor Livre;
-- no exemplo-base, o supply é 800.000 unidades;
+- no exemplo-base, o supply Ã© 800.000 unidades;
 - `decimals = 0`;
 - pode ser vendido dentro da plataforma;
-- não dá direito de uso da casa;
-- não pode ser transferido diretamente pela wallet;
-- compradores não podem revender tokens na Fase 0.
+- nÃ£o dÃ¡ direito de uso da casa;
+- nÃ£o pode ser transferido diretamente pela wallet;
+- compradores nÃ£o podem revender tokens na Fase 0.
 
 Exemplo:
 
 ```text
-Imóvel com 1.000.000 unidades econômicas totais
+ImÃ³vel com 1.000.000 unidades econÃ´micas totais
 
 200.000 unidades = valor vinculado ao usufruto
 800.000 unidades = valor livre em ERC-20
@@ -339,33 +339,33 @@ Imóvel com 1.000.000 unidades econômicas totais
 
 ## 8. Tabela comparativa dos direitos
 
-| Direito | Implementação | Fungível? | Transferível separadamente? | Fica com quem inicialmente? | Representa |
+| Direito | ImplementaÃ§Ã£o | FungÃ­vel? | TransferÃ­vel separadamente? | Fica com quem inicialmente? | Representa |
 |---|---|---:|---:|---|---|
-| Direito de Usufruto | ERC-721 restrito | Não | Não na Fase 0 | Proprietária | Uso da casa |
-| Direito de Valor Vinculado | Campo interno da posição de usufruto | Não como token | Não | Proprietária | Fração econômica presa ao usufruto |
-| Direito de Valor Livre | ERC-20 restrito | Sim | Sim, via plataforma | Proprietária | Fração econômica negociável |
+| Direito de Usufruto | ERC-721 restrito | NÃ£o | NÃ£o na Fase 0 | ProprietÃ¡ria | Uso da casa |
+| Direito de Valor Vinculado | Campo interno da posiÃ§Ã£o de usufruto | NÃ£o como token | NÃ£o | ProprietÃ¡ria | FraÃ§Ã£o econÃ´mica presa ao usufruto |
+| Direito de Valor Livre | ERC-20 restrito | Sim | Sim, via plataforma | ProprietÃ¡ria | FraÃ§Ã£o econÃ´mica negociÃ¡vel |
 
 ---
 
-## 9. Exemplo completo da distribuição inicial
+## 9. Exemplo completo da distribuiÃ§Ã£o inicial
 
 Casa com valor de mercado informado de 10 ETH.
 
-Parâmetros:
+ParÃ¢metros:
 
 ```text
-Valor econômico total = 1.000.000 unidades
+Valor econÃ´mico total = 1.000.000 unidades
 Direito de Valor Vinculado = 200.000 unidades
 Direito de Valor Livre = 800.000 unidades
 ```
 
-Após tokenização:
+ApÃ³s tokenizaÃ§Ã£o:
 
-| Pessoa | Usufruto | Valor Vinculado | Valor Livre | Total econômico |
+| Pessoa | Usufruto | Valor Vinculado | Valor Livre | Total econÃ´mico |
 |---|---:|---:|---:|---:|
 | Pessoa A | Sim | 20% | 80% | 100% |
 
-Representação técnica:
+RepresentaÃ§Ã£o tÃ©cnica:
 
 ```text
 Pessoa A recebe:
@@ -381,12 +381,12 @@ Pessoa A recebe:
 Pessoa A decide vender 300.000 unidades de Direito de Valor Livre.
 
 ```text
-300.000 unidades = 30% do valor econômico total
+300.000 unidades = 30% do valor econÃ´mico total
 ```
 
 Casa informada em 10 ETH.
 
-Preço automático:
+PreÃ§o automÃ¡tico:
 
 ```text
 priceWei = marketValueWei * amount / totalValueUnits
@@ -398,18 +398,18 @@ Pessoa B compra a oferta.
 
 Resultado:
 
-| Pessoa | Usufruto | Valor Vinculado | Valor Livre | Total econômico |
+| Pessoa | Usufruto | Valor Vinculado | Valor Livre | Total econÃ´mico |
 |---|---:|---:|---:|---:|
 | Pessoa A | Sim | 20% | 50% | 70% |
-| Pessoa B | Não | 0% | 30% | 30% |
+| Pessoa B | NÃ£o | 0% | 30% | 30% |
 
-Interpretação:
+InterpretaÃ§Ã£o:
 
 ```text
 Pessoa A continua podendo usar a casa.
-Pessoa A mantém 70% do valor econômico total.
-Pessoa B possui 30% do valor econômico total.
-Pessoa B não tem direito de uso da casa.
+Pessoa A mantÃ©m 70% do valor econÃ´mico total.
+Pessoa B possui 30% do valor econÃ´mico total.
+Pessoa B nÃ£o tem direito de uso da casa.
 ```
 
 ---
@@ -417,40 +417,40 @@ Pessoa B não tem direito de uso da casa.
 ## 11. Arquitetura da Fase 0
 
 ```text
-┌──────────────────────────────────────┐
-│ Browser                              │
-│ Interface Next.js                    │
-└──────────────────┬───────────────────┘
-                   │
-                   │ chama server-side local
-                   ▼
-┌──────────────────────────────────────┐
-│ Container app                         │
-│ Node.js + Next.js                     │
-│ API routes/server actions             │
-│ lowdb + OKX client              │
-└──────────────────┬───────────────────┘
-                   │
-                   │ persiste dados mockados
-                   ▼
-┌──────────────────────────────────────┐
-│ Volume Docker                         │
-│ /app/offchain-db/db.json              │
-└──────────────────┬───────────────────┘
-                   │
-                   │ hashes/referências
-                   ▼
-┌──────────────────────────────────────┐
-│ Smart Contracts Sepolia               │
-│ Solidity                              │
-└──────────────────┬───────────────────┘
-                   │
-                   │ ETH
-                   ▼
-┌──────────────────────────────────────┐
-│ Wallets                               │
-│ vendedora / comprador                 │
-└──────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Browser                              â”‚
+â”‚ Interface Next.js                    â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                   â”‚
+                   â”‚ chama server-side local
+                   â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Container app                         â”‚
+â”‚ Node.js + Next.js                     â”‚
+â”‚ API routes/server actions             â”‚
+â”‚ lowdb + OKX client              â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                   â”‚
+                   â”‚ persiste dados mockados
+                   â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Volume Docker                         â”‚
+â”‚ /app/offchain-db/db.json              â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                   â”‚
+                   â”‚ hashes/referÃªncias
+                   â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Smart Contracts Sepolia               â”‚
+â”‚ Solidity                              â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                   â”‚
+                   â”‚ ETH
+                   â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Wallets                               â”‚
+â”‚ vendedora / comprador                 â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
@@ -462,9 +462,9 @@ Pessoa B não tem direito de uso da casa.
 Os seguintes dados ficam off-chain:
 
 - documentos mockados;
-- endereço completo;
-- localização exata;
-- descrição do imóvel;
+- endereÃ§o completo;
+- localizaÃ§Ã£o exata;
+- descriÃ§Ã£o do imÃ³vel;
 - imagens mockadas, se usadas;
 - dados auxiliares de onboarding.
 
@@ -476,17 +476,17 @@ Toda escrita deve passar por:
 
 ```text
 Browser
-↓
+â†“
 API route ou server action local
-↓
+â†“
 lowdb
-↓
+â†“
 db.json
 ```
 
-### 12.3 Banco local não estruturado
+### 12.3 Banco local nÃ£o estruturado
 
-Recomendação:
+RecomendaÃ§Ã£o:
 
 ```text
 lowdb + db.json
@@ -505,7 +505,7 @@ Exemplo:
       "address": {
         "street": "Rua Exemplo",
         "number": "123",
-        "city": "São Paulo",
+        "city": "SÃ£o Paulo",
         "state": "SP",
         "country": "BR",
         "postalCode": "00000-000"
@@ -559,27 +559,27 @@ keccak256
 
 ### 13.2 Input
 
-O input do hash deve ser um JSON estável:
+O input do hash deve ser um JSON estÃ¡vel:
 
 - chaves ordenadas alfabeticamente;
 - encoding UTF-8;
-- sem campos voláteis não determinísticos;
+- sem campos volÃ¡teis nÃ£o determinÃ­sticos;
 - strings normalizadas;
 - mesma estrutura para frontend e server-side.
 
-### 13.3 Separação dos hashes
+### 13.3 SeparaÃ§Ã£o dos hashes
 
-O PRD usa três hashes com responsabilidades diferentes:
+O PRD usa trÃªs hashes com responsabilidades diferentes:
 
-| Hash | Conteúdo |
+| Hash | ConteÃºdo |
 |---|---|
-| `metadataHash` | dados textuais do imóvel, valor de mercado, percentual vinculado e endereço textual |
-| `documentsHash` | metadata mockada dos documentos, sem hash de binário e sem `uploadedAt` |
+| `metadataHash` | dados textuais do imÃ³vel, valor de mercado, percentual vinculado e endereÃ§o textual |
+| `documentsHash` | metadata mockada dos documentos, sem hash de binÃ¡rio e sem `uploadedAt` |
 | `locationHash` | apenas latitude e longitude normalizadas |
 
-### 13.4 Metadata textual do imóvel
+### 13.4 Metadata textual do imÃ³vel
 
-`metadataHash` deve incluir o endereço textual.
+`metadataHash` deve incluir o endereÃ§o textual.
 
 Schema:
 
@@ -601,19 +601,19 @@ type PropertyMetadata = {
 };
 ```
 
-Cálculo:
+CÃ¡lculo:
 
 ```text
 metadataHash = keccak256(stableJson(PropertyMetadata))
 ```
 
-### 13.5 Localização
+### 13.5 LocalizaÃ§Ã£o
 
 `locationHash` deve incluir apenas `lat` e `lng`.
 
 `lat` e `lng` devem ser strings normalizadas com 6 casas decimais.
 
-Não usar `number` para `lat`/`lng`.
+NÃ£o usar `number` para `lat`/`lng`.
 
 Schema:
 
@@ -637,7 +637,7 @@ Exemplo:
 }
 ```
 
-Cálculo:
+CÃ¡lculo:
 
 ```text
 locationHash = keccak256(stableJson(LocationMetadata))
@@ -645,9 +645,9 @@ locationHash = keccak256(stableJson(LocationMetadata))
 
 ### 13.6 Documentos mockados
 
-`documentsHash` deve ser calculado sobre a metadata mockada dos documentos, não sobre o arquivo binário.
+`documentsHash` deve ser calculado sobre a metadata mockada dos documentos, nÃ£o sobre o arquivo binÃ¡rio.
 
-`uploadedAt` não entra no `documentsHash`.
+`uploadedAt` nÃ£o entra no `documentsHash`.
 
 `uploadedAt` pode existir no `db.json` para fins de UI/debug, mas deve ficar fora do objeto usado para hashing.
 
@@ -665,7 +665,7 @@ type DocumentsHashMetadata = {
 };
 ```
 
-Cálculo:
+CÃ¡lculo:
 
 ```text
 documentsHash = keccak256(stableJson(DocumentsHashMetadata))
@@ -673,7 +673,7 @@ documentsHash = keccak256(stableJson(DocumentsHashMetadata))
 
 ### 13.7 Exemplo de campo permitido apenas no banco local
 
-O banco local pode armazenar `uploadedAt`, mas esse campo não entra no hash.
+O banco local pode armazenar `uploadedAt`, mas esse campo nÃ£o entra no hash.
 
 ```json
 {
@@ -686,40 +686,40 @@ O banco local pode armazenar `uploadedAt`, mas esse campo não entra no hash.
 
 ---
 
-## 14. Cotação fiduciária com OKX
+## 14. CotaÃ§Ã£o fiduciÃ¡ria com OKX
 
 ### 14.1 Objetivo
 
-A interface deve exibir equivalentes fiduciários para valores em ETH.
+A interface deve exibir equivalentes fiduciÃ¡rios para valores em ETH.
 
 A Fase 0 deve priorizar:
 
 - BRL;
 - USD.
 
-EUR e JPY podem aparecer na UI somente se houver rota pública OKX configurada e funcional no ambiente local. Caso contrário, a UI deve ocultar essas moedas sem quebrar o fluxo principal.
+EUR e JPY podem aparecer na UI somente se houver rota pÃºblica OKX configurada e funcional no ambiente local. Caso contrÃ¡rio, a UI deve ocultar essas moedas sem quebrar o fluxo principal.
 
 ### 14.2 Regra de arquitetura
 
-O frontend não chama a OKX diretamente.
+O frontend nÃ£o chama a OKX diretamente.
 
 Fluxo:
 
 ```text
 Frontend
-↓
+â†“
 /api/fiat-rates
-↓
+â†“
 server-side local
-↓
+â†“
 OKX
-↓
+â†“
 cache local
-↓
+â†“
 frontend
 ```
 
-A API local é responsável por:
+A API local Ã© responsÃ¡vel por:
 
 - consultar a OKX;
 - aplicar timeout;
@@ -727,19 +727,19 @@ A API local é responsável por:
 - normalizar a resposta;
 - calcular rotas;
 - armazenar cache;
-- aplicar limite máximo de staleness no fallback;
+- aplicar limite mÃ¡ximo de staleness no fallback;
 - retornar erro padronizado;
-- nunca usar valores fiduciários para settlement on-chain.
+- nunca usar valores fiduciÃ¡rios para settlement on-chain.
 
-### 14.3 Endpoint OKX obrigatório
+### 14.3 Endpoint OKX obrigatÃ³rio
 
-A Fase 0 deve usar o endpoint público de ticker da OKX:
+A Fase 0 deve usar o endpoint pÃºblico de ticker da OKX:
 
 ```text
 GET /api/v5/market/ticker?instId=<instId>
 ```
 
-Base URL configurável:
+Base URL configurÃ¡vel:
 
 ```text
 OKX_API_BASE_URL=https://www.okx.com
@@ -752,7 +752,7 @@ ETH-USDC
 USDC-BRL
 ```
 
-### 14.4 Campo usado como preço
+### 14.4 Campo usado como preÃ§o
 
 A API local deve usar:
 
@@ -760,32 +760,32 @@ A API local deve usar:
 data[0].last
 ```
 
-como preço informativo da rota consultada.
+como preÃ§o informativo da rota consultada.
 
-Esse preço é apenas informativo para UI.
+Esse preÃ§o Ã© apenas informativo para UI.
 
-Ele não é preço garantido de execução e não é usado pelo contrato.
+Ele nÃ£o Ã© preÃ§o garantido de execuÃ§Ã£o e nÃ£o Ã© usado pelo contrato.
 
-### 14.5 Validação da resposta OKX
+### 14.5 ValidaÃ§Ã£o da resposta OKX
 
-A resposta da OKX só é válida se todas as condições abaixo forem verdadeiras:
+A resposta da OKX sÃ³ Ã© vÃ¡lida se todas as condiÃ§Ãµes abaixo forem verdadeiras:
 
 - `code == "0"`;
 - `data` existe;
-- `data` é array não vazio;
+- `data` Ã© array nÃ£o vazio;
 - `data[0].last` existe;
-- `data[0].last` é decimal válido;
+- `data[0].last` Ã© decimal vÃ¡lido;
 - `data[0].last > 0`.
 
-Se qualquer uma dessas validações falhar, a rota consultada deve ser considerada indisponível.
+Se qualquer uma dessas validaÃ§Ãµes falhar, a rota consultada deve ser considerada indisponÃ­vel.
 
-Função conceitual:
+FunÃ§Ã£o conceitual:
 
 ```ts
 async function fetchOkxTickerLast(instId: string): Promise<Decimal>;
 ```
 
-### 14.6 Fonte primária
+### 14.6 Fonte primÃ¡ria
 
 Provider:
 
@@ -793,19 +793,19 @@ Provider:
 OKX
 ```
 
-A fonte primária de preço cripto será:
+A fonte primÃ¡ria de preÃ§o cripto serÃ¡:
 
 ```text
 ETH-USDC
 ```
 
-A rota principal para BRL será:
+A rota principal para BRL serÃ¡:
 
 ```text
-ETH → USDC → BRL
+ETH â†’ USDC â†’ BRL
 ```
 
-Fórmula:
+FÃ³rmula:
 
 ```text
 ETH_BRL = ETH_USDC * USDC_BRL
@@ -814,67 +814,67 @@ ETH_BRL = ETH_USDC * USDC_BRL
 Para USD, a Fase 0 usa:
 
 ```text
-ETH_USD ≈ ETH_USDC
+ETH_USD â‰ˆ ETH_USDC
 ```
 
-Essa aproximação é aceitável para a demo, pois USDC é tratado como referência em dólar.
+Essa aproximaÃ§Ã£o Ã© aceitÃ¡vel para a demo, pois USDC Ã© tratado como referÃªncia em dÃ³lar.
 
-### 14.7 Validação runtime de `USDC-BRL`
+### 14.7 ValidaÃ§Ã£o runtime de `USDC-BRL`
 
 A rota `USDC-BRL` deve ser validada em runtime.
 
-A aplicação não deve assumir que `USDC-BRL` estará sempre disponível como ticker público no ambiente usado.
+A aplicaÃ§Ã£o nÃ£o deve assumir que `USDC-BRL` estarÃ¡ sempre disponÃ­vel como ticker pÃºblico no ambiente usado.
 
-Fluxo obrigatório:
+Fluxo obrigatÃ³rio:
 
 ```text
 1. Buscar ETH-USDC.
 2. Validar ETH-USDC.
 3. Tentar buscar USDC-BRL.
 4. Validar USDC-BRL.
-5. Se USDC-BRL for válido:
+5. Se USDC-BRL for vÃ¡lido:
    - calcular ETH_BRL.
-6. Se USDC-BRL for inválido ou indisponível:
-   - marcar BRL como indisponível;
-   - manter USD disponível se ETH-USDC for válido;
-   - não bloquear o fluxo on-chain em ETH.
+6. Se USDC-BRL for invÃ¡lido ou indisponÃ­vel:
+   - marcar BRL como indisponÃ­vel;
+   - manter USD disponÃ­vel se ETH-USDC for vÃ¡lido;
+   - nÃ£o bloquear o fluxo on-chain em ETH.
 ```
 
-BRL indisponível não bloqueia:
+BRL indisponÃ­vel nÃ£o bloqueia:
 
-- registro do imóvel;
-- verificação mock;
-- tokenização;
-- criação de oferta;
+- registro do imÃ³vel;
+- verificaÃ§Ã£o mock;
+- tokenizaÃ§Ã£o;
+- criaÃ§Ã£o de oferta;
 - compra da oferta.
 
-Na UI, quando BRL estiver indisponível, exibir:
+Na UI, quando BRL estiver indisponÃ­vel, exibir:
 
 ```text
-BRL indisponível no momento
+BRL indisponÃ­vel no momento
 ```
 
-### 14.8 Rotas fiduciárias
+### 14.8 Rotas fiduciÃ¡rias
 
 #### USD
 
-Obrigatório na Fase 0.
+ObrigatÃ³rio na Fase 0.
 
 ```text
-ETH_USD ≈ ETH_USDC
+ETH_USD â‰ˆ ETH_USDC
 ```
 
-Se `ETH-USDC` estiver indisponível, toda cotação fiduciária fica indisponível.
+Se `ETH-USDC` estiver indisponÃ­vel, toda cotaÃ§Ã£o fiduciÃ¡ria fica indisponÃ­vel.
 
 #### BRL
 
-Obrigatório tentar na Fase 0, mas não bloqueante.
+ObrigatÃ³rio tentar na Fase 0, mas nÃ£o bloqueante.
 
 ```text
 ETH_BRL = ETH_USDC * USDC_BRL
 ```
 
-Se `USDC-BRL` estiver indisponível, a API deve retornar USD e marcar BRL como indisponível.
+Se `USDC-BRL` estiver indisponÃ­vel, a API deve retornar USD e marcar BRL como indisponÃ­vel.
 
 #### EUR
 
@@ -884,7 +884,7 @@ Condicional.
 ETH_EUR = ETH_USDC * USDC_EUR
 ```
 
-A moeda EUR só deve ser exibida se `OKX_USDC_EUR_INST_ID` estiver configurada e a API local conseguir obter cotação válida.
+A moeda EUR sÃ³ deve ser exibida se `OKX_USDC_EUR_INST_ID` estiver configurada e a API local conseguir obter cotaÃ§Ã£o vÃ¡lida.
 
 #### JPY
 
@@ -894,13 +894,13 @@ Condicional.
 ETH_JPY = ETH_USDC * USDC_JPY
 ```
 
-A moeda JPY só deve ser exibida se `OKX_USDC_JPY_INST_ID` estiver configurada e a API local conseguir obter cotação válida.
+A moeda JPY sÃ³ deve ser exibida se `OKX_USDC_JPY_INST_ID` estiver configurada e a API local conseguir obter cotaÃ§Ã£o vÃ¡lida.
 
 ### 14.9 Timeout
 
 A chamada para a OKX deve ter timeout.
 
-Valor padrão:
+Valor padrÃ£o:
 
 ```text
 FIAT_REQUEST_TIMEOUT_MS=3000
@@ -908,17 +908,17 @@ FIAT_REQUEST_TIMEOUT_MS=3000
 
 ### 14.10 Cache e fallback
 
-A API local deve usar cache de cotações.
+A API local deve usar cache de cotaÃ§Ãµes.
 
-Valor padrão de TTL:
+Valor padrÃ£o de TTL:
 
 ```text
 FIAT_CACHE_TTL_SECONDS=60
 ```
 
-Se a OKX falhar e houver último valor válido em cache, a API pode usar fallback apenas se o cache não ultrapassar o limite máximo de staleness.
+Se a OKX falhar e houver Ãºltimo valor vÃ¡lido em cache, a API pode usar fallback apenas se o cache nÃ£o ultrapassar o limite mÃ¡ximo de staleness.
 
-Valor padrão de staleness máximo:
+Valor padrÃ£o de staleness mÃ¡ximo:
 
 ```text
 FIAT_MAX_STALENESS_SECONDS=3600
@@ -927,14 +927,14 @@ FIAT_MAX_STALENESS_SECONDS=3600
 Regras:
 
 ```text
-Se cache está dentro do TTL:
+Se cache estÃ¡ dentro do TTL:
     usar cache normal.
 
 Se OKX falha e cache tem idade <= FIAT_MAX_STALENESS_SECONDS:
     usar fallback com warning.
 
 Se OKX falha e cache tem idade > FIAT_MAX_STALENESS_SECONDS:
-    retornar erro fiduciário padronizado.
+    retornar erro fiduciÃ¡rio padronizado.
 ```
 
 ### 14.11 Resposta padronizada de sucesso
@@ -962,7 +962,7 @@ Se OKX falha e cache tem idade > FIAT_MAX_STALENESS_SECONDS:
 }
 ```
 
-### 14.12 Resposta com BRL indisponível
+### 14.12 Resposta com BRL indisponÃ­vel
 
 ```json
 {
@@ -1014,7 +1014,7 @@ Se OKX falha e cache tem idade > FIAT_MAX_STALENESS_SECONDS:
 
 ### 14.14 Resposta de erro padronizada
 
-Se a OKX falhar e não houver cache válido dentro do limite máximo de staleness:
+Se a OKX falhar e nÃ£o houver cache vÃ¡lido dentro do limite mÃ¡ximo de staleness:
 
 ```json
 {
@@ -1025,16 +1025,16 @@ Se a OKX falhar e não houver cache válido dentro do limite máximo de stalenes
 }
 ```
 
-### 14.15 Cálculos fiduciários
+### 14.15 CÃ¡lculos fiduciÃ¡rios
 
-Cálculos fiduciários não devem usar `Number`.
+CÃ¡lculos fiduciÃ¡rios nÃ£o devem usar `Number`.
 
 Regras:
 
 - valores on-chain em `bigint`;
-- taxas fiduciárias como string decimal;
-- cálculos usando decimal seguro, como `decimal.js` ou biblioteca equivalente;
-- formatação apenas na camada de UI.
+- taxas fiduciÃ¡rias como string decimal;
+- cÃ¡lculos usando decimal seguro, como `decimal.js` ou biblioteca equivalente;
+- formataÃ§Ã£o apenas na camada de UI.
 
 Exemplo conceitual:
 
@@ -1045,27 +1045,27 @@ const fiatAmount = ethAmount.mul(new Decimal(rateString));
 
 ### 14.16 Uso na UI
 
-A UI deve exibir valores fiduciários para:
+A UI deve exibir valores fiduciÃ¡rios para:
 
-- valor de mercado do imóvel;
+- valor de mercado do imÃ³vel;
 - valor total do Direito de Valor Livre;
 - quantidade listada;
-- preço da oferta;
+- preÃ§o da oferta;
 - valor por unidade;
-- total econômico da vendedora;
-- total econômico do comprador.
+- total econÃ´mico da vendedora;
+- total econÃ´mico do comprador.
 
-USD deve aparecer quando `ETH-USDC` estiver disponível.
+USD deve aparecer quando `ETH-USDC` estiver disponÃ­vel.
 
-BRL deve aparecer quando `USDC-BRL` estiver disponível.
+BRL deve aparecer quando `USDC-BRL` estiver disponÃ­vel.
 
-Se BRL estiver indisponível, a UI deve continuar funcionando em ETH e USD.
+Se BRL estiver indisponÃ­vel, a UI deve continuar funcionando em ETH e USD.
 
-EUR e JPY são condicionais e só devem aparecer se houver cotação válida retornada pela API local.
+EUR e JPY sÃ£o condicionais e sÃ³ devem aparecer se houver cotaÃ§Ã£o vÃ¡lida retornada pela API local.
 
 ### 14.17 Regra de settlement
 
-Valores fiduciários são apenas informativos.
+Valores fiduciÃ¡rios sÃ£o apenas informativos.
 
 O contrato continua usando:
 
@@ -1073,13 +1073,13 @@ O contrato continua usando:
 - wei;
 - unidades inteiras.
 
-Nenhum valor fiduciário é usado para settlement on-chain na Fase 0.
+Nenhum valor fiduciÃ¡rio Ã© usado para settlement on-chain na Fase 0.
 
 ---
 
 ## 15. Dados on-chain
 
-A blockchain armazena apenas referências, hashes e parâmetros econômicos.
+A blockchain armazena apenas referÃªncias, hashes e parÃ¢metros econÃ´micos.
 
 ```solidity
 struct PropertyRecord {
@@ -1104,7 +1104,7 @@ struct PropertyRecord {
 }
 ```
 
-Nenhum endereço completo, documento ou localização exata deve ser salvo em texto aberto on-chain.
+Nenhum endereÃ§o completo, documento ou localizaÃ§Ã£o exata deve ser salvo em texto aberto on-chain.
 
 ---
 
@@ -1112,31 +1112,31 @@ Nenhum endereço completo, documento ou localização exata deve ser salvo em te
 
 ### 16.1 `PropertyRegistry`
 
-Responsável por:
+ResponsÃ¡vel por:
 
-- registrar imóvel;
+- registrar imÃ³vel;
 - manter `nextPropertyId`;
 - manter `propertyExists`;
-- armazenar hashes e parâmetros econômicos;
+- armazenar hashes e parÃ¢metros econÃ´micos;
 - manter `propertiesByOwner`;
-- manter lista de participantes por imóvel;
+- manter lista de participantes por imÃ³vel;
 - fazer mock verification;
-- tokenizar imóvel;
+- tokenizar imÃ³vel;
 - chamar `PropertyValueTokenFactory`;
 - mintar NFT de usufruto;
 - mintar ERC-20 de Direito de Valor Livre;
-- armazenar a posição de usufruto com valor vinculado;
-- configurar endereços externos;
+- armazenar a posiÃ§Ã£o de usufruto com valor vinculado;
+- configurar endereÃ§os externos;
 - atualizar status conforme listings.
 
 ### 16.2 `UsufructRightNFT`
 
 ERC-721 restrito.
 
-Responsável por:
+ResponsÃ¡vel por:
 
 - representar o Direito de Usufruto;
-- usar contrato único;
+- usar contrato Ãºnico;
 - usar `tokenId = propertyId`;
 - permitir mint apenas pelo `PropertyRegistry`;
 - bloquear `approve`;
@@ -1148,7 +1148,7 @@ Responsável por:
 
 ERC-20 restrito.
 
-Responsável por:
+ResponsÃ¡vel por:
 
 - representar apenas o Direito de Valor Livre;
 - ter `decimals = 0`;
@@ -1161,17 +1161,17 @@ Responsável por:
 
 ### 16.4 `PropertyValueTokenFactory`
 
-Responsável por:
+ResponsÃ¡vel por:
 
-- criar um `PropertyValueToken` por imóvel;
+- criar um `PropertyValueToken` por imÃ³vel;
 - permitir `createPropertyValueToken` apenas pelo `PropertyRegistry`;
 - configurar operador inicial do token criado, incluindo `PrimaryValueSale`.
 
 ### 16.5 `PrimaryValueSale`
 
-Marketplace primário.
+Marketplace primÃ¡rio.
 
-Responsável por:
+ResponsÃ¡vel por:
 
 - criar oferta de venda do Direito de Valor Livre;
 - aceitar apenas ofertas criadas pelo owner do `PropertyRecord`;
@@ -1179,7 +1179,7 @@ Responsável por:
 - exigir `priceWei > 0`;
 - manter `nextListingId`;
 - manter `listingExists`;
-- manter listagens enumeráveis;
+- manter listagens enumerÃ¡veis;
 - travar tokens em escrow;
 - usar `address(this)` como escrow;
 - permitir compra total da oferta;
@@ -1188,13 +1188,13 @@ Responsável por:
 - reverter se `call` falhar;
 - usar `nonReentrant` em compra e cancelamento;
 - registrar comprador como participante;
-- atualizar status do imóvel.
+- atualizar status do imÃ³vel.
 
 Esse contrato movimenta apenas o ERC-20 de Direito de Valor Livre.
 
-Ele não movimenta o NFT de usufruto.
+Ele nÃ£o movimenta o NFT de usufruto.
 
-Ele não movimenta o Direito de Valor Vinculado.
+Ele nÃ£o movimenta o Direito de Valor Vinculado.
 
 ---
 
@@ -1216,9 +1216,9 @@ bytes32 public constant MOCK_VERIFIER_ROLE =
 
 Regras:
 
-- owner/admin configura endereços externos;
+- owner/admin configura endereÃ§os externos;
 - `mockVerifyProperty` pode ser chamado pelo owner do `PropertyRecord` ou por conta com `MOCK_VERIFIER_ROLE`;
-- status só pode ser atualizado por fluxos autorizados.
+- status sÃ³ pode ser atualizado por fluxos autorizados.
 
 ### 17.2 `UsufructRightNFT`
 
@@ -1237,24 +1237,24 @@ Regras:
 
 - apenas `PropertyRegistry` pode mintar;
 - apenas admin/factory configura operador inicial;
-- `PrimaryValueSale` é operador autorizado;
+- `PrimaryValueSale` Ã© operador autorizado;
 - `transfer` reverte;
 - `transferFrom` reverte;
 - `approve` reverte;
-- `allowance` não é usado na Fase 0.
+- `allowance` nÃ£o Ã© usado na Fase 0.
 
 ### 17.4 `PropertyValueTokenFactory`
 
 Regras:
 
-- `createPropertyValueToken` só pode ser chamado pelo `PropertyRegistry`.
+- `createPropertyValueToken` sÃ³ pode ser chamado pelo `PropertyRegistry`.
 
 ### 17.5 `PrimaryValueSale`
 
 Regras:
 
-- `createPrimarySaleListing` só pode ser chamado pelo owner do `PropertyRecord`;
-- compradores não podem revender tokens na Fase 0;
+- `createPrimarySaleListing` sÃ³ pode ser chamado pelo owner do `PropertyRecord`;
+- compradores nÃ£o podem revender tokens na Fase 0;
 - compras e cancelamentos usam `nonReentrant`.
 
 ---
@@ -1277,12 +1277,12 @@ enum SaleStatus {
 }
 ```
 
-Definição de `SoldOut`:
+DefiniÃ§Ã£o de `SoldOut`:
 
 ```text
-SoldOut significa que 100% do freeValueUnits foi vendido em ofertas primárias.
-Não significa venda total do imóvel.
-Não afeta o Direito de Usufruto nem o Direito de Valor Vinculado.
+SoldOut significa que 100% do freeValueUnits foi vendido em ofertas primÃ¡rias.
+NÃ£o significa venda total do imÃ³vel.
+NÃ£o afeta o Direito de Usufruto nem o Direito de Valor Vinculado.
 ```
 
 ---
@@ -1346,7 +1346,7 @@ struct PrimarySaleListing {
 
 ---
 
-## 20. Storage obrigatório
+## 20. Storage obrigatÃ³rio
 
 ### 20.1 `PropertyRegistry`
 
@@ -1380,17 +1380,17 @@ mapping(uint256 => uint256) public totalFreeValueSoldByProperty;
 mapping(uint256 => uint256) public activeEscrowedAmountByProperty;
 ```
 
-### 20.3 Definições
+### 20.3 DefiniÃ§Ãµes
 
 | Storage | Significado |
 |---|---|
-| `propertyExists` | evita interpretar imóvel inexistente como struct default |
+| `propertyExists` | evita interpretar imÃ³vel inexistente como struct default |
 | `listingExists` | evita interpretar listing inexistente como struct default |
-| `activeListingsCountByProperty` | número de ofertas ativas por imóvel |
+| `activeListingsCountByProperty` | nÃºmero de ofertas ativas por imÃ³vel |
 | `totalFreeValueSoldByProperty` | total de tokens livres vendidos com sucesso |
 | `activeEscrowedAmountByProperty` | total de tokens livres atualmente presos em ofertas ativas |
-| `propertiesByOwner` | imóveis registrados por owner |
-| `participants` | owner e compradores do imóvel |
+| `propertiesByOwner` | imÃ³veis registrados por owner |
+| `participants` | owner e compradores do imÃ³vel |
 
 ---
 
@@ -1406,9 +1406,9 @@ function setExternalContracts(
 ) external onlyOwner;
 ```
 
-#### Validações
+#### ValidaÃ§Ãµes
 
-- [ ] Nenhum endereço pode ser zero.
+- [ ] Nenhum endereÃ§o pode ser zero.
 - [ ] Apenas owner/admin pode chamar.
 
 #### Evento
@@ -1423,7 +1423,7 @@ event ExternalContractsConfigured(
 
 ---
 
-### 21.2 Registrar imóvel
+### 21.2 Registrar imÃ³vel
 
 ```solidity
 function registerProperty(
@@ -1435,7 +1435,7 @@ function registerProperty(
 ) external returns (uint256 propertyId);
 ```
 
-#### Validações
+#### ValidaÃ§Ãµes
 
 - [ ] `marketValueWei > 0`.
 - [ ] `linkedValueBps > 0`.
@@ -1444,7 +1444,7 @@ function registerProperty(
 - [ ] `documentsHash != bytes32(0)`.
 - [ ] `locationHash != bytes32(0)`.
 
-#### Cálculos
+#### CÃ¡lculos
 
 ```solidity
 totalValueUnits = 1_000_000;
@@ -1472,11 +1472,11 @@ freeValueUnits = totalValueUnits - linkedValueUnits;
 function mockVerifyProperty(uint256 propertyId) external;
 ```
 
-#### Validações
+#### ValidaÃ§Ãµes
 
 - [ ] `propertyExists[propertyId] == true`.
-- [ ] Status atual é `PendingMockVerification`.
-- [ ] Chamador é owner do `PropertyRecord` ou possui `MOCK_VERIFIER_ROLE`.
+- [ ] Status atual Ã© `PendingMockVerification`.
+- [ ] Chamador Ã© owner do `PropertyRecord` ou possui `MOCK_VERIFIER_ROLE`.
 
 #### Efeitos
 
@@ -1486,18 +1486,18 @@ function mockVerifyProperty(uint256 propertyId) external;
 
 ---
 
-### 21.4 Tokenizar imóvel
+### 21.4 Tokenizar imÃ³vel
 
 ```solidity
 function tokenizeProperty(uint256 propertyId) external;
 ```
 
-#### Validações
+#### ValidaÃ§Ãµes
 
 - [ ] `propertyExists[propertyId] == true`.
 - [ ] `msg.sender == owner`.
-- [ ] Status é `MockVerified`.
-- [ ] Imóvel ainda não foi tokenizado.
+- [ ] Status Ã© `MockVerified`.
+- [ ] ImÃ³vel ainda nÃ£o foi tokenizado.
 
 #### Efeitos
 
@@ -1513,9 +1513,9 @@ function tokenizeProperty(uint256 propertyId) external;
 
 ---
 
-### 21.5 Atualizar status após alteração de listing
+### 21.5 Atualizar status apÃ³s alteraÃ§Ã£o de listing
 
-Função chamada apenas pelo `PrimaryValueSale`.
+FunÃ§Ã£o chamada apenas pelo `PrimaryValueSale`.
 
 ```solidity
 function updateStatusAfterSaleChange(
@@ -1528,8 +1528,8 @@ function updateStatusAfterSaleChange(
 #### Regras
 
 - [ ] Se `totalFreeValueSold == freeValueUnits`, status vira `SoldOut`.
-- [ ] Senão, se `activeListingsCount > 0`, status vira `ActiveSale`.
-- [ ] Senão, status volta para `Tokenized`.
+- [ ] SenÃ£o, se `activeListingsCount > 0`, status vira `ActiveSale`.
+- [ ] SenÃ£o, status volta para `Tokenized`.
 
 ---
 
@@ -1574,7 +1574,7 @@ function getEconomicBreakdown(uint256 propertyId, address account)
 
 ### 22.1 Regras
 
-- [ ] Contrato único.
+- [ ] Contrato Ãºnico.
 - [ ] `tokenId = propertyId`.
 - [ ] Apenas `PropertyRegistry` pode mintar.
 - [ ] `approve` reverte.
@@ -1603,13 +1603,13 @@ interface IUsufructRightNFT {
 
 - [ ] Representa apenas o Direito de Valor Livre.
 - [ ] `decimals() = 0`.
-- [ ] Quantidades são unidades inteiras.
+- [ ] Quantidades sÃ£o unidades inteiras.
 - [ ] Apenas `PropertyRegistry` pode mintar.
-- [ ] `PrimaryValueSale` é operador autorizado.
+- [ ] `PrimaryValueSale` Ã© operador autorizado.
 - [ ] `transfer` reverte.
 - [ ] `transferFrom` reverte.
 - [ ] `approve` reverte.
-- [ ] `allowance` não é usado.
+- [ ] `allowance` nÃ£o Ã© usado.
 
 ### 23.2 Interface esperada
 
@@ -1638,12 +1638,12 @@ interface IPropertyValueToken {
 ### 24.1 Regras
 
 - [ ] Apenas `PropertyRegistry` pode chamar `createPropertyValueToken`.
-- [ ] Factory cria um ERC-20 por imóvel.
+- [ ] Factory cria um ERC-20 por imÃ³vel.
 - [ ] Token criado deve ter `decimals = 0`.
-- [ ] Token criado deve receber referência ao `PropertyRegistry`.
+- [ ] Token criado deve receber referÃªncia ao `PropertyRegistry`.
 - [ ] Token criado deve configurar `PrimaryValueSale` como operador autorizado.
 
-### 24.2 Função esperada
+### 24.2 FunÃ§Ã£o esperada
 
 ```solidity
 function createPropertyValueToken(
@@ -1658,7 +1658,7 @@ function createPropertyValueToken(
 
 ## 25. `PrimaryValueSale`
 
-### 25.1 Criar oferta primária
+### 25.1 Criar oferta primÃ¡ria
 
 ```solidity
 function createPrimarySaleListing(
@@ -1667,16 +1667,16 @@ function createPrimarySaleListing(
 ) external returns (uint256 listingId);
 ```
 
-#### Validações
+#### ValidaÃ§Ãµes
 
 - [ ] `propertyExists[propertyId] == true`.
-- [ ] Imóvel está `Tokenized` ou `ActiveSale`.
+- [ ] ImÃ³vel estÃ¡ `Tokenized` ou `ActiveSale`.
 - [ ] `msg.sender == property.owner`.
 - [ ] `amount > 0`.
 - [ ] `amount <= balanceOf(msg.sender)`.
-- [ ] Compradores não podem criar ofertas na Fase 0.
+- [ ] Compradores nÃ£o podem criar ofertas na Fase 0.
 
-#### Cálculo de preço
+#### CÃ¡lculo de preÃ§o
 
 ```solidity
 priceWei = property.marketValueWei * amount / property.totalValueUnits;
@@ -1693,13 +1693,13 @@ require(priceWei > 0, "PRICE_ZERO");
 - [ ] Cria listing com status `Active`.
 - [ ] Adiciona `listingId` em `listingIds`.
 - [ ] Adiciona `listingId` em `listingsByProperty[propertyId]`.
-- [ ] Atualiza status do imóvel.
+- [ ] Atualiza status do imÃ³vel.
 - [ ] Emite `PrimarySaleListed`.
 - [ ] Emite `TokensEscrowed`.
 
 ---
 
-### 25.2 Comprar oferta primária
+### 25.2 Comprar oferta primÃ¡ria
 
 ```solidity
 function buyPrimarySaleListing(uint256 listingId)
@@ -1708,28 +1708,28 @@ function buyPrimarySaleListing(uint256 listingId)
     nonReentrant;
 ```
 
-#### Validações
+#### ValidaÃ§Ãµes
 
 - [ ] `listingExists[listingId] == true`.
-- [ ] Listing está `Active`.
+- [ ] Listing estÃ¡ `Active`.
 - [ ] `msg.value == priceWei`.
-- [ ] Comprador não é seller.
-- [ ] Imóvel está `ActiveSale` ou `Tokenized`.
+- [ ] Comprador nÃ£o Ã© seller.
+- [ ] ImÃ³vel estÃ¡ `ActiveSale` ou `Tokenized`.
 
-#### Efeitos antes de interações externas
+#### Efeitos antes de interaÃ§Ãµes externas
 
 - [ ] Listing muda para `Filled`.
 - [ ] Decrementa `activeListingsCountByProperty[propertyId]`.
 - [ ] Decrementa `activeEscrowedAmountByProperty[propertyId]`.
 - [ ] Incrementa `totalFreeValueSoldByProperty[propertyId]`.
-- [ ] Atualiza status do imóvel:
+- [ ] Atualiza status do imÃ³vel:
   - `SoldOut`, se todo `freeValueUnits` foi vendido;
-  - `Tokenized`, se não houver ofertas ativas;
+  - `Tokenized`, se nÃ£o houver ofertas ativas;
   - `ActiveSale`, se ainda houver ofertas ativas.
-- [ ] Adiciona comprador em `participants[propertyId]`, se ainda não existir.
+- [ ] Adiciona comprador em `participants[propertyId]`, se ainda nÃ£o existir.
 - [ ] Emite `ListingStatusUpdated`.
 
-#### Interações externas
+#### InteraÃ§Ãµes externas
 
 - [ ] Transfere tokens livres de `address(this)` para comprador.
 - [ ] Transfere ETH para seller usando `call`.
@@ -1756,10 +1756,10 @@ function cancelPrimarySaleListing(uint256 listingId)
     nonReentrant;
 ```
 
-#### Validações
+#### ValidaÃ§Ãµes
 
 - [ ] `listingExists[listingId] == true`.
-- [ ] Listing está `Active`.
+- [ ] Listing estÃ¡ `Active`.
 - [ ] `msg.sender == seller`.
 
 #### Efeitos
@@ -1768,7 +1768,7 @@ function cancelPrimarySaleListing(uint256 listingId)
 - [ ] Decrementa `activeListingsCountByProperty[propertyId]`.
 - [ ] Decrementa `activeEscrowedAmountByProperty[propertyId]`.
 - [ ] Devolve tokens de `address(this)` para seller.
-- [ ] Atualiza status do imóvel.
+- [ ] Atualiza status do imÃ³vel.
 - [ ] Emite `PrimarySaleCancelled`.
 - [ ] Emite `ListingStatusUpdated`.
 
@@ -1798,11 +1798,11 @@ function getActiveListingsByProperty(uint256 propertyId)
     returns (PrimarySaleListing[] memory);
 ```
 
-Para a Fase 0, arrays simples são aceitáveis.
+Para a Fase 0, arrays simples sÃ£o aceitÃ¡veis.
 
 ---
 
-## 26. Eventos obrigatórios
+## 26. Eventos obrigatÃ³rios
 
 ### 26.1 `PropertyRegistry`
 
@@ -1904,56 +1904,56 @@ event ListingStatusUpdated(
 
 ---
 
-## 27. Invariantes críticas
+## 27. Invariantes crÃ­ticas
 
 - [ ] `linkedValueUnits + freeValueUnits == totalValueUnits`.
-- [ ] `propertyExists[propertyId] == true` para qualquer operação em imóvel.
-- [ ] `listingExists[listingId] == true` para qualquer operação em listing.
-- [ ] Cada imóvel tokenizado possui exatamente um NFT de Direito de Usufruto.
-- [ ] `tokenId` do usufruto é igual ao `propertyId`.
-- [ ] Cada imóvel possui exatamente uma posição de usufruto ativa.
-- [ ] O Direito de Valor Vinculado não existe como ERC-20.
+- [ ] `propertyExists[propertyId] == true` para qualquer operaÃ§Ã£o em imÃ³vel.
+- [ ] `listingExists[listingId] == true` para qualquer operaÃ§Ã£o em listing.
+- [ ] Cada imÃ³vel tokenizado possui exatamente um NFT de Direito de Usufruto.
+- [ ] `tokenId` do usufruto Ã© igual ao `propertyId`.
+- [ ] Cada imÃ³vel possui exatamente uma posiÃ§Ã£o de usufruto ativa.
+- [ ] O Direito de Valor Vinculado nÃ£o existe como ERC-20.
 - [ ] O Direito de Valor Vinculado fica na `UsufructPosition`.
-- [ ] O Direito de Valor Vinculado não pode ser vendido separadamente.
+- [ ] O Direito de Valor Vinculado nÃ£o pode ser vendido separadamente.
 - [ ] O ERC-20 representa apenas o Direito de Valor Livre.
-- [ ] O supply inicial do ERC-20 é igual a `freeValueUnits`.
+- [ ] O supply inicial do ERC-20 Ã© igual a `freeValueUnits`.
 - [ ] O ERC-20 usa `decimals = 0`.
-- [ ] O NFT de usufruto é mintado para a proprietária.
-- [ ] O ERC-20 de Direito de Valor Livre é mintado para a proprietária.
-- [ ] Transferências diretas do ERC-20 são bloqueadas.
+- [ ] O NFT de usufruto Ã© mintado para a proprietÃ¡ria.
+- [ ] O ERC-20 de Direito de Valor Livre Ã© mintado para a proprietÃ¡ria.
+- [ ] TransferÃªncias diretas do ERC-20 sÃ£o bloqueadas.
 - [ ] `approve` do ERC-20 reverte.
-- [ ] Transferências diretas do NFT são bloqueadas.
+- [ ] TransferÃªncias diretas do NFT sÃ£o bloqueadas.
 - [ ] `approve` e `setApprovalForAll` do NFT revertem.
 - [ ] Ofertas travam tokens livres em `address(this)`.
-- [ ] `activeEscrowedAmountByProperty` é igual à soma dos amounts das ofertas ativas.
-- [ ] `totalFreeValueSoldByProperty` só aumenta em compras concluídas.
-- [ ] Comprador só recebe tokens após pagar o preço exato.
+- [ ] `activeEscrowedAmountByProperty` Ã© igual Ã  soma dos amounts das ofertas ativas.
+- [ ] `totalFreeValueSoldByProperty` sÃ³ aumenta em compras concluÃ­das.
+- [ ] Comprador sÃ³ recebe tokens apÃ³s pagar o preÃ§o exato.
 - [ ] Listing muda para `Filled` antes de transferir ETH.
-- [ ] Transferência de ETH com `call` reverte se falhar.
-- [ ] Vendedora recebe ETH após compra bem-sucedida.
-- [ ] Dados sensíveis não são gravados em texto aberto on-chain.
-- [ ] On-chain armazena apenas hashes/referências.
-- [ ] Valores fiduciários não afetam settlement on-chain.
+- [ ] TransferÃªncia de ETH com `call` reverte se falhar.
+- [ ] Vendedora recebe ETH apÃ³s compra bem-sucedida.
+- [ ] Dados sensÃ­veis nÃ£o sÃ£o gravados em texto aberto on-chain.
+- [ ] On-chain armazena apenas hashes/referÃªncias.
+- [ ] Valores fiduciÃ¡rios nÃ£o afetam settlement on-chain.
 
 ---
 
 ## 28. Casos de erro esperados
 
-### Registrar imóvel sem valor
+### Registrar imÃ³vel sem valor
 
 ```text
 marketValueWei = 0
 Resultado: revert INVALID_MARKET_VALUE
 ```
 
-### Registrar imóvel com percentual vinculado inválido
+### Registrar imÃ³vel com percentual vinculado invÃ¡lido
 
 ```text
 linkedValueBps = 0 ou >= 10.000
 Resultado: revert INVALID_LINKED_VALUE_BPS
 ```
 
-### Operar imóvel inexistente
+### Operar imÃ³vel inexistente
 
 ```text
 propertyExists[propertyId] = false
@@ -1967,14 +1967,14 @@ listingExists[listingId] = false
 Resultado: revert LISTING_NOT_FOUND
 ```
 
-### Registrar imóvel sem hash de documentos
+### Registrar imÃ³vel sem hash de documentos
 
 ```text
 documentsHash = 0x0
 Resultado: revert INVALID_DOCUMENTS_HASH
 ```
 
-### Tokenizar antes da verificação mock
+### Tokenizar antes da verificaÃ§Ã£o mock
 
 ```text
 status = PendingMockVerification
@@ -1988,7 +1988,7 @@ amount > balanceOf(seller)
 Resultado: revert INSUFFICIENT_FREE_VALUE_BALANCE
 ```
 
-### Criar oferta com preço calculado igual a zero
+### Criar oferta com preÃ§o calculado igual a zero
 
 ```text
 priceWei == 0
@@ -2046,19 +2046,19 @@ Resultado: revert APPROVALS_DISABLED
 
 ---
 
-## 29. Testes obrigatórios
+## 29. Testes obrigatÃ³rios
 
 ### 29.1 `PropertyRegistry`
 
-- [ ] Registra imóvel com parâmetros válidos.
+- [ ] Registra imÃ³vel com parÃ¢metros vÃ¡lidos.
 - [ ] Reverte com valor de mercado zero.
-- [ ] Reverte com `linkedValueBps` inválido.
+- [ ] Reverte com `linkedValueBps` invÃ¡lido.
 - [ ] Reverte sem `metadataHash`.
 - [ ] Reverte sem `documentsHash`.
 - [ ] Reverte sem `locationHash`.
 - [ ] Usa `nextPropertyId`.
 - [ ] Define `propertyExists[propertyId] = true`.
-- [ ] Reverte operações com property inexistente.
+- [ ] Reverte operaÃ§Ãµes com property inexistente.
 - [ ] Calcula `linkedValueUnits` corretamente.
 - [ ] Calcula `freeValueUnits` corretamente.
 - [ ] Garante `linkedValueUnits + freeValueUnits == totalValueUnits`.
@@ -2068,19 +2068,19 @@ Resultado: revert APPROVALS_DISABLED
 - [ ] Define status `PendingMockVerification`.
 - [ ] Permite mock verification pelo owner.
 - [ ] Permite mock verification por `MOCK_VERIFIER_ROLE`.
-- [ ] Reverte mock verification por conta não autorizada.
-- [ ] Reverte tokenização antes de mock verification.
-- [ ] Tokeniza após mock verification.
+- [ ] Reverte mock verification por conta nÃ£o autorizada.
+- [ ] Reverte tokenizaÃ§Ã£o antes de mock verification.
+- [ ] Tokeniza apÃ³s mock verification.
 - [ ] Cria `UsufructPosition`.
 - [ ] Minta NFT com `tokenId = propertyId`.
 - [ ] Cria `PropertyValueToken` via factory.
-- [ ] Emite eventos obrigatórios.
+- [ ] Emite eventos obrigatÃ³rios.
 
 ---
 
 ### 29.2 `UsufructRightNFT`
 
-- [ ] Minta NFT para proprietária.
+- [ ] Minta NFT para proprietÃ¡ria.
 - [ ] Apenas `PropertyRegistry` pode mintar.
 - [ ] `tokenId == propertyId`.
 - [ ] Bloqueia `transferFrom`.
@@ -2088,32 +2088,32 @@ Resultado: revert APPROVALS_DISABLED
 - [ ] Bloqueia `approve`.
 - [ ] Bloqueia `setApprovalForAll`.
 - [ ] Retorna owner correto.
-- [ ] NFT permanece com proprietária após venda de valor livre.
+- [ ] NFT permanece com proprietÃ¡ria apÃ³s venda de valor livre.
 
 ---
 
 ### 29.3 `PropertyValueToken`
 
-- [ ] Minta apenas `freeValueUnits` para proprietária.
-- [ ] Não minta `totalValueUnits`.
+- [ ] Minta apenas `freeValueUnits` para proprietÃ¡ria.
+- [ ] NÃ£o minta `totalValueUnits`.
 - [ ] `decimals() == 0`.
 - [ ] Bloqueia `transfer`.
 - [ ] Bloqueia `transferFrom`.
 - [ ] Bloqueia `approve`.
 - [ ] Permite `platformTransferFrom` por operador autorizado.
-- [ ] Reverte movimentação por operador não autorizado.
-- [ ] Supply inicial é igual a `freeValueUnits`.
-- [ ] `PrimaryValueSale` é operador autorizado.
+- [ ] Reverte movimentaÃ§Ã£o por operador nÃ£o autorizado.
+- [ ] Supply inicial Ã© igual a `freeValueUnits`.
+- [ ] `PrimaryValueSale` Ã© operador autorizado.
 
 ---
 
 ### 29.4 `PropertyValueTokenFactory`
 
 - [ ] Apenas `PropertyRegistry` chama `createPropertyValueToken`.
-- [ ] Cria um token por imóvel.
+- [ ] Cria um token por imÃ³vel.
 - [ ] Token criado usa `decimals = 0`.
-- [ ] Token criado já nasce com `PrimaryValueSale` como operador autorizado.
-- [ ] Reverte chamada por conta não autorizada.
+- [ ] Token criado jÃ¡ nasce com `PrimaryValueSale` como operador autorizado.
+- [ ] Reverte chamada por conta nÃ£o autorizada.
 
 ---
 
@@ -2121,10 +2121,10 @@ Resultado: revert APPROVALS_DISABLED
 
 - [ ] Possui `nextListingId`.
 - [ ] Define `listingExists`.
-- [ ] Reverte operação com listing inexistente.
+- [ ] Reverte operaÃ§Ã£o com listing inexistente.
 - [ ] Cria listing com saldo livre suficiente.
 - [ ] Apenas owner do `PropertyRecord` cria listing.
-- [ ] Comprador não consegue criar listing.
+- [ ] Comprador nÃ£o consegue criar listing.
 - [ ] Calcula `priceWei` automaticamente.
 - [ ] Reverte se `priceWei == 0`.
 - [ ] Trava tokens livres em `address(this)`.
@@ -2135,17 +2135,17 @@ Resultado: revert APPROVALS_DISABLED
 - [ ] Muda listing para `Filled` antes de transferir ETH.
 - [ ] Transfere ERC-20 livre para buyer.
 - [ ] Transfere ETH para seller com `call`.
-- [ ] Reverte se transferência de ETH falhar.
+- [ ] Reverte se transferÃªncia de ETH falhar.
 - [ ] Atualiza `totalFreeValueSoldByProperty`.
-- [ ] Atualiza status para `Tokenized` quando não houver ofertas ativas.
+- [ ] Atualiza status para `Tokenized` quando nÃ£o houver ofertas ativas.
 - [ ] Atualiza status para `SoldOut` quando todo `freeValueUnits` for vendido.
-- [ ] Não transfere NFT de usufruto.
-- [ ] Não altera `linkedValueUnits`.
+- [ ] NÃ£o transfere NFT de usufruto.
+- [ ] NÃ£o altera `linkedValueUnits`.
 - [ ] Cancela listing ativa.
 - [ ] Devolve tokens ao seller no cancelamento.
 - [ ] Getters retornam listings por property.
 - [ ] Getters retornam listings ativas.
-- [ ] Emite eventos obrigatórios.
+- [ ] Emite eventos obrigatÃ³rios.
 
 ---
 
@@ -2154,65 +2154,65 @@ Resultado: revert APPROVALS_DISABLED
 - [ ] Usa OKX como provider.
 - [ ] Chama `GET /api/v5/market/ticker?instId=<instId>`.
 - [ ] Consulta `ETH-USDC`.
-- [ ] Usa `data[0].last` como preço.
+- [ ] Usa `data[0].last` como preÃ§o.
 - [ ] Valida `code == "0"`.
-- [ ] Valida `data` como array não vazio.
+- [ ] Valida `data` como array nÃ£o vazio.
 - [ ] Valida `data[0].last`.
 - [ ] Valida `last > 0`.
 - [ ] Consulta `USDC-BRL` em runtime.
-- [ ] Calcula `ETH_BRL = ETH_USDC * USDC_BRL` quando `USDC-BRL` estiver disponível.
-- [ ] Calcula `ETH_USD ≈ ETH_USDC`.
-- [ ] Retorna USD quando `ETH-USDC` estiver válido.
-- [ ] Marca BRL como indisponível se `USDC-BRL` falhar.
-- [ ] Não bloqueia fluxo ETH quando BRL estiver indisponível.
+- [ ] Calcula `ETH_BRL = ETH_USDC * USDC_BRL` quando `USDC-BRL` estiver disponÃ­vel.
+- [ ] Calcula `ETH_USD â‰ˆ ETH_USDC`.
+- [ ] Retorna USD quando `ETH-USDC` estiver vÃ¡lido.
+- [ ] Marca BRL como indisponÃ­vel se `USDC-BRL` falhar.
+- [ ] NÃ£o bloqueia fluxo ETH quando BRL estiver indisponÃ­vel.
 - [ ] Retorna EUR apenas se rota opcional estiver configurada e funcional.
 - [ ] Retorna JPY apenas se rota opcional estiver configurada e funcional.
 - [ ] Respeita `FIAT_REQUEST_TIMEOUT_MS`.
 - [ ] Respeita `FIAT_CACHE_TTL_SECONDS`.
 - [ ] Respeita `FIAT_MAX_STALENESS_SECONDS`.
-- [ ] Usa cache quando disponível e válido.
-- [ ] Usa fallback de último valor válido se a OKX falhar e o cache estiver dentro do staleness máximo.
-- [ ] Retorna erro padronizado se a OKX falhar e não houver cache válido dentro do staleness máximo.
+- [ ] Usa cache quando disponÃ­vel e vÃ¡lido.
+- [ ] Usa fallback de Ãºltimo valor vÃ¡lido se a OKX falhar e o cache estiver dentro do staleness mÃ¡ximo.
+- [ ] Retorna erro padronizado se a OKX falhar e nÃ£o houver cache vÃ¡lido dentro do staleness mÃ¡ximo.
 - [ ] Retorna rates como strings decimais.
-- [ ] Não usa `Number` para cálculos fiduciários.
-- [ ] Usa decimal seguro para conversões.
+- [ ] NÃ£o usa `Number` para cÃ¡lculos fiduciÃ¡rios.
+- [ ] Usa decimal seguro para conversÃµes.
 - [ ] Testa resposta de sucesso.
 - [ ] Testa cache hit.
 - [ ] Testa fallback.
 - [ ] Testa erro sem cache.
-- [ ] Testa BRL indisponível sem bloquear USD.
-- [ ] Testa ocultação de EUR/JPY quando as rotas opcionais não estiverem disponíveis.
+- [ ] Testa BRL indisponÃ­vel sem bloquear USD.
+- [ ] Testa ocultaÃ§Ã£o de EUR/JPY quando as rotas opcionais nÃ£o estiverem disponÃ­veis.
 
 ---
 
 ### 29.7 Off-chain local e hashing
 
-- [ ] Browser não escreve diretamente no `db.json`.
+- [ ] Browser nÃ£o escreve diretamente no `db.json`.
 - [ ] API/server action escreve no lowdb.
 - [ ] Hash usa `keccak256`.
 - [ ] Hash usa stable JSON com chaves ordenadas.
-- [ ] `metadataHash` inclui endereço textual.
+- [ ] `metadataHash` inclui endereÃ§o textual.
 - [ ] `locationHash` inclui apenas `lat` e `lng`.
-- [ ] `lat` e `lng` são strings com 6 casas decimais.
-- [ ] Hash de documentos usa metadata mockada, não binário.
-- [ ] `uploadedAt` não entra no `documentsHash`.
+- [ ] `lat` e `lng` sÃ£o strings com 6 casas decimais.
+- [ ] Hash de documentos usa metadata mockada, nÃ£o binÃ¡rio.
+- [ ] `uploadedAt` nÃ£o entra no `documentsHash`.
 - [ ] `uploadedAt` fica apenas no `db.json`.
-- [ ] Schemas de metadata são fixos.
-- [ ] Hash gerado é determinístico.
+- [ ] Schemas de metadata sÃ£o fixos.
+- [ ] Hash gerado Ã© determinÃ­stico.
 
 ---
 
-## 30. Milestones técnicos da Fase 0
+## 30. Milestones tÃ©cnicos da Fase 0
 
 ---
 
-### Milestone 0.1 — Setup técnico e Docker
+### Milestone 0.1 â€” Setup tÃ©cnico e Docker
 
 **Objetivo:** preparar base de desenvolvimento, Docker, deploy e demo.
 
 #### Checklist
 
-- [x] Criar repositório.
+- [x] Criar repositÃ³rio.
 - [x] Configurar Foundry fora do container app.
 - [x] Configurar Next.js.
 - [x] Configurar TypeScript.
@@ -2225,23 +2225,23 @@ Resultado: revert APPROVALS_DISABLED
 - [x] Configurar volume para `offchain-db/db.json`.
 - [x] Criar `.env.app`.
 - [x] Criar `.env.deploy`.
-- [x] Garantir que `DEPLOYER_PRIVATE_KEY` não entra no container app.
+- [x] Garantir que `DEPLOYER_PRIVATE_KEY` nÃ£o entra no container app.
 - [x] Criar estrutura de contratos.
 - [x] Criar script de deploy Foundry.
-- [x] Criar estrutura local de banco não estruturado.
+- [x] Criar estrutura local de banco nÃ£o estruturado.
 - [x] Criar `db.json` local.
-- [x] Criar utilitário de hash.
-- [x] Criar utilitário de decimal seguro.
+- [x] Criar utilitÃ¡rio de hash.
+- [x] Criar utilitÃ¡rio de decimal seguro.
 - [x] Conectar wallet no frontend.
 - [x] Ler dado do contrato no frontend.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
 - [x] App roda via Docker.
 - [x] Frontend abre localmente.
-- [x] Usuário conecta wallet.
+- [x] UsuÃ¡rio conecta wallet.
 - [x] Frontend detecta Sepolia.
-- [x] Frontend lê dado on-chain.
+- [x] Frontend lÃª dado on-chain.
 - [x] Frontend salva registro mockado via server-side local.
 - [x] Deploy roda fora do container app.
 
@@ -2251,9 +2251,9 @@ P0
 
 ---
 
-### Milestone 0.2 — Cotação fiduciária com OKX
+### Milestone 0.2 â€” CotaÃ§Ã£o fiduciÃ¡ria com OKX
 
-**Objetivo:** exibir valores em moedas fiduciárias.
+**Objetivo:** exibir valores em moedas fiduciÃ¡rias.
 
 #### Checklist
 
@@ -2262,22 +2262,22 @@ P0
 - [x] Suportar BRL e USD.
 - [x] Implementar timeout.
 - [x] Implementar cache de 60 segundos.
-- [x] Implementar fallback de último valor válido.
+- [x] Implementar fallback de Ãºltimo valor vÃ¡lido.
 - [x] Implementar erro padronizado.
 - [x] Armazenar cache no lowdb.
 - [x] Usar string decimal para rates.
-- [x] Usar decimal seguro para cálculos.
+- [x] Usar decimal seguro para cÃ¡lculos.
 - [x] Exibir valor da casa em BRL e USD.
-- [x] Exibir preço da oferta em BRL e USD.
+- [x] Exibir preÃ§o da oferta em BRL e USD.
 - [x] Exibir valor por unidade em BRL e USD.
 - [x] Exibir aviso quando estiver usando fallback/cache.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
-- [x] UI mostra valores em ETH e USD, e BRL quando a rota estiver disponível.
+- [x] UI mostra valores em ETH e USD, e BRL quando a rota estiver disponÃ­vel.
 - [x] API funciona com cache.
 - [x] API lida com falha da OKX.
-- [x] Testes P0 de cotação passam.
+- [x] Testes P0 de cotaÃ§Ã£o passam.
 
 #### Prioridade
 
@@ -2285,17 +2285,17 @@ P0
 
 ---
 
-### Milestone 0.3 — Off-chain local e upload mockado
+### Milestone 0.3 â€” Off-chain local e upload mockado
 
-**Objetivo:** permitir cadastro de dados do imóvel fora da blockchain.
+**Objetivo:** permitir cadastro de dados do imÃ³vel fora da blockchain.
 
 #### Checklist
 
-- [x] Criar formulário de tokenização.
+- [x] Criar formulÃ¡rio de tokenizaÃ§Ã£o.
 - [x] Criar mock document upload.
 - [x] Criar schema local de propriedade.
-- [x] Salvar endereço no banco local via server-side.
-- [x] Salvar localização no banco local via server-side.
+- [x] Salvar endereÃ§o no banco local via server-side.
+- [x] Salvar localizaÃ§Ã£o no banco local via server-side.
 - [x] Normalizar `lat` e `lng` como strings de 6 casas.
 - [x] Salvar valor de mercado no banco local.
 - [x] Salvar percentual vinculado ao usufruto.
@@ -2304,15 +2304,15 @@ P0
 - [x] Calcular `documentsHash`.
 - [x] Calcular `locationHash`.
 - [x] Exibir preview dos dados antes do registro on-chain.
-- [x] Exibir aviso de que documentos são mockados.
+- [x] Exibir aviso de que documentos sÃ£o mockados.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
 - [x] Pessoa A preenche dados da casa.
 - [x] Pessoa A define percentual vinculado ao usufruto.
 - [x] Pessoa A faz upload mockado de documentos.
-- [x] Dados são salvos localmente via API/server action.
-- [x] Hashes são gerados de forma determinística.
+- [x] Dados sÃ£o salvos localmente via API/server action.
+- [x] Hashes sÃ£o gerados de forma determinÃ­stica.
 
 #### Prioridade
 
@@ -2320,9 +2320,9 @@ P0
 
 ---
 
-### Milestone 0.4 — Registro on-chain do imóvel
+### Milestone 0.4 â€” Registro on-chain do imÃ³vel
 
-**Objetivo:** criar o registro on-chain com referências aos dados off-chain e parâmetros econômicos.
+**Objetivo:** criar o registro on-chain com referÃªncias aos dados off-chain e parÃ¢metros econÃ´micos.
 
 #### Checklist
 
@@ -2350,14 +2350,14 @@ P0
 - [x] Criar chamada no frontend.
 - [x] Exibir `propertyId` criado.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
-- [x] Pessoa A registra imóvel on-chain.
+- [x] Pessoa A registra imÃ³vel on-chain.
 - [x] Contrato armazena valor de mercado e hashes.
 - [x] Contrato calcula 20% vinculado e 80% livre no exemplo-base.
 - [x] `propertyExists[propertyId] == true`.
-- [x] Status inicial é `PendingMockVerification`.
-- [x] Dashboard mostra imóvel registrado.
+- [x] Status inicial Ã© `PendingMockVerification`.
+- [x] Dashboard mostra imÃ³vel registrado.
 
 #### Prioridade
 
@@ -2365,9 +2365,9 @@ P0
 
 ---
 
-### Milestone 0.5 — Verificação mock
+### Milestone 0.5 â€” VerificaÃ§Ã£o mock
 
-**Objetivo:** simular aprovação documental antes da tokenização.
+**Objetivo:** simular aprovaÃ§Ã£o documental antes da tokenizaÃ§Ã£o.
 
 #### Checklist
 
@@ -2375,23 +2375,23 @@ P0
 - [x] Implementar `AccessControl`.
 - [x] Implementar `MOCK_VERIFIER_ROLE`.
 - [x] Implementar `mockVerifyProperty`.
-- [x] Validar existência do imóvel.
+- [x] Validar existÃªncia do imÃ³vel.
 - [x] Validar status `PendingMockVerification`.
-- [x] Permitir mock verification pelo owner do imóvel.
+- [x] Permitir mock verification pelo owner do imÃ³vel.
 - [x] Permitir mock verification por `MOCK_VERIFIER_ROLE`.
-- [x] Reverter mock verification por conta não autorizada.
+- [x] Reverter mock verification por conta nÃ£o autorizada.
 - [x] Atualizar status para `MockVerified`.
 - [x] Emitir `PropertyMockVerified`.
 - [x] Emitir `PropertyStatusUpdated`.
-- [x] Criar botão “Aprovar documentos mock”.
+- [x] Criar botÃ£o â€œAprovar documentos mockâ€.
 - [x] Exibir status no dashboard.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
-- [x] Pessoa A registra imóvel.
-- [x] Pessoa A clica em “Aprovar documentos mock”.
+- [x] Pessoa A registra imÃ³vel.
+- [x] Pessoa A clica em â€œAprovar documentos mockâ€.
 - [x] Status muda para `MockVerified`.
-- [x] Tokenização fica liberada.
+- [x] TokenizaÃ§Ã£o fica liberada.
 
 #### Prioridade
 
@@ -2399,41 +2399,41 @@ P0
 
 ---
 
-### Milestone 0.6 — Tokenização do imóvel
+### Milestone 0.6 â€” TokenizaÃ§Ã£o do imÃ³vel
 
-**Objetivo:** gerar NFT de usufruto, posição de valor vinculado e ERC-20 de valor livre.
+**Objetivo:** gerar NFT de usufruto, posiÃ§Ã£o de valor vinculado e ERC-20 de valor livre.
 
 #### Checklist
 
-- [ ] Implementar `UsufructRightNFT`.
-- [ ] Implementar `PropertyValueToken`.
-- [ ] Implementar `PropertyValueTokenFactory`.
-- [ ] Configurar factory com registry autorizado.
-- [ ] Implementar `tokenizeProperty`.
-- [ ] Validar status `MockVerified`.
-- [ ] Mintar NFT de usufruto para Pessoa A.
-- [ ] Garantir `tokenId = propertyId`.
-- [ ] Criar `UsufructPosition` com `linkedValueUnits`.
-- [ ] Criar ERC-20 via factory.
-- [ ] Mintar apenas `freeValueUnits` em ERC-20 para Pessoa A.
-- [ ] Garantir que o ERC-20 já nasce com `PrimaryValueSale` como operador autorizado.
-- [ ] Garantir `decimals = 0`.
-- [ ] Bloquear transferência direta do NFT.
-- [ ] Bloquear aprovação e transferência direta do ERC-20.
-- [ ] Atualizar status para `Tokenized`.
-- [ ] Salvar endereço do token no `PropertyRecord`.
-- [ ] Emitir `PropertyTokenized`.
-- [ ] Emitir `PropertyValueTokenCreated`.
-- [ ] Atualizar dashboard.
+- [x] Implementar `UsufructRightNFT`.
+- [x] Implementar `PropertyValueToken`.
+- [x] Implementar `PropertyValueTokenFactory`.
+- [x] Configurar factory com registry autorizado.
+- [x] Implementar `tokenizeProperty`.
+- [x] Validar status `MockVerified`.
+- [x] Mintar NFT de usufruto para Pessoa A.
+- [x] Garantir `tokenId = propertyId`.
+- [x] Criar `UsufructPosition` com `linkedValueUnits`.
+- [x] Criar ERC-20 via factory.
+- [x] Mintar apenas `freeValueUnits` em ERC-20 para Pessoa A.
+- [x] Garantir que o ERC-20 jÃ¡ nasce com `PrimaryValueSale` como operador autorizado.
+- [x] Garantir `decimals = 0`.
+- [x] Bloquear transferÃªncia direta do NFT.
+- [x] Bloquear aprovaÃ§Ã£o e transferÃªncia direta do ERC-20.
+- [x] Atualizar status para `Tokenized`.
+- [x] Salvar endereÃ§o do token no `PropertyRecord`.
+- [x] Emitir `PropertyTokenized`.
+- [x] Emitir `PropertyValueTokenCreated`.
+- [x] Atualizar dashboard.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
-- [ ] Pessoa A tokeniza a casa.
-- [ ] Pessoa A recebe NFT de Direito de Usufruto.
-- [ ] Posição de usufruto mostra 200.000 unidades vinculadas no exemplo-base.
-- [ ] Pessoa A recebe 800.000 tokens de Direito de Valor Livre no exemplo-base.
-- [ ] Token de valor tem `decimals = 0`.
-- [ ] Dashboard mostra tokenização concluída.
+- [x] Pessoa A tokeniza a casa.
+- [x] Pessoa A recebe NFT de Direito de Usufruto.
+- [x] PosiÃ§Ã£o de usufruto mostra 200.000 unidades vinculadas no exemplo-base.
+- [x] Pessoa A recebe 800.000 tokens de Direito de Valor Livre no exemplo-base.
+- [x] Token de valor tem `decimals = 0`.
+- [x] Dashboard mostra tokenizaÃ§Ã£o concluÃ­da.
 
 #### Prioridade
 
@@ -2441,9 +2441,9 @@ P0
 
 ---
 
-### Milestone 0.7 — Dashboard da propriedade tokenizada
+### Milestone 0.7 â€” Dashboard da propriedade tokenizada
 
-**Objetivo:** mostrar de forma clara a diferença entre usufruto, valor vinculado e valor livre.
+**Objetivo:** mostrar de forma clara a diferenÃ§a entre usufruto, valor vinculado e valor livre.
 
 #### Checklist
 
@@ -2451,8 +2451,8 @@ P0
 - [ ] Mostrar valor de mercado em BRL/USD.
 - [ ] Mostrar owner.
 - [ ] Mostrar status.
-- [ ] Mostrar endereço off-chain.
-- [ ] Mostrar localização off-chain.
+- [ ] Mostrar endereÃ§o off-chain.
+- [ ] Mostrar localizaÃ§Ã£o off-chain.
 - [ ] Mostrar `metadataHash`.
 - [ ] Mostrar `documentsHash`.
 - [ ] Mostrar `locationHash`.
@@ -2462,21 +2462,21 @@ P0
 - [ ] Mostrar percentual vinculado.
 - [ ] Mostrar token de valor livre.
 - [ ] Mostrar supply livre.
-- [ ] Mostrar saldo livre da proprietária.
-- [ ] Mostrar total econômico da proprietária.
+- [ ] Mostrar saldo livre da proprietÃ¡ria.
+- [ ] Mostrar total econÃ´mico da proprietÃ¡ria.
 - [ ] Mostrar participantes.
-- [ ] Mostrar saldos de compradores após venda.
+- [ ] Mostrar saldos de compradores apÃ³s venda.
 - [ ] Mostrar ofertas ativas.
 - [ ] Mostrar tokens em escrow ativo.
-- [ ] Mostrar explicação “Direito de Valor Livre não dá direito de uso”.
+- [ ] Mostrar explicaÃ§Ã£o â€œDireito de Valor Livre nÃ£o dÃ¡ direito de usoâ€.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
 - [ ] Dashboard permite entender quem tem o usufruto.
 - [ ] Dashboard permite entender quem tem valor vinculado.
 - [ ] Dashboard permite entender quem tem valor livre.
-- [ ] Dashboard mostra total econômico por pessoa.
-- [ ] Dashboard mostra valores em ETH e fiduciário.
+- [ ] Dashboard mostra total econÃ´mico por pessoa.
+- [ ] Dashboard mostra valores em ETH e fiduciÃ¡rio.
 
 #### Prioridade
 
@@ -2484,9 +2484,9 @@ P0
 
 ---
 
-### Milestone 0.8 — Criar oferta primária de Direito de Valor Livre
+### Milestone 0.8 â€” Criar oferta primÃ¡ria de Direito de Valor Livre
 
-**Objetivo:** permitir que a proprietária defina quanto quer vender do valor livre.
+**Objetivo:** permitir que a proprietÃ¡ria defina quanto quer vender do valor livre.
 
 #### Checklist
 
@@ -2499,7 +2499,7 @@ P0
 - [ ] Implementar `activeEscrowedAmountByProperty`.
 - [ ] Implementar `totalFreeValueSoldByProperty`.
 - [ ] Implementar `createPrimarySaleListing`.
-- [ ] Validar imóvel `Tokenized` ou `ActiveSale`.
+- [ ] Validar imÃ³vel `Tokenized` ou `ActiveSale`.
 - [ ] Validar `msg.sender == property.owner`.
 - [ ] Validar saldo livre suficiente.
 - [ ] Validar `amount > 0`.
@@ -2508,24 +2508,24 @@ P0
 - [ ] Travar tokens livres em `address(this)`.
 - [ ] Criar listing.
 - [ ] Atualizar status para `Active`.
-- [ ] Atualizar status do imóvel.
+- [ ] Atualizar status do imÃ³vel.
 - [ ] Emitir `PrimarySaleListed`.
 - [ ] Emitir `TokensEscrowed`.
-- [ ] Criar formulário no frontend.
-- [ ] Mostrar percentual equivalente do valor econômico total.
-- [ ] Mostrar preço calculado em ETH.
-- [ ] Mostrar preço calculado em fiduciário.
+- [ ] Criar formulÃ¡rio no frontend.
+- [ ] Mostrar percentual equivalente do valor econÃ´mico total.
+- [ ] Mostrar preÃ§o calculado em ETH.
+- [ ] Mostrar preÃ§o calculado em fiduciÃ¡rio.
 - [ ] Mostrar preview da venda.
-- [ ] Mostrar que NFT de usufruto não será transferido.
-- [ ] Mostrar que valor vinculado não será transferido.
+- [ ] Mostrar que NFT de usufruto nÃ£o serÃ¡ transferido.
+- [ ] Mostrar que valor vinculado nÃ£o serÃ¡ transferido.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
 - [ ] Pessoa A define vender 300.000 tokens livres.
-- [ ] Sistema mostra que isso equivale a 30% do valor econômico total.
-- [ ] Contrato calcula preço de 3 ETH para casa de 10 ETH.
+- [ ] Sistema mostra que isso equivale a 30% do valor econÃ´mico total.
+- [ ] Contrato calcula preÃ§o de 3 ETH para casa de 10 ETH.
 - [ ] UI mostra equivalente em BRL/USD.
-- [ ] Tokens livres são travados em escrow.
+- [ ] Tokens livres sÃ£o travados em escrow.
 - [ ] Oferta aparece no marketplace.
 
 #### Prioridade
@@ -2534,7 +2534,7 @@ P0
 
 ---
 
-### Milestone 0.9 — Comprar Direito de Valor Livre
+### Milestone 0.9 â€” Comprar Direito de Valor Livre
 
 **Objetivo:** permitir que comprador compre a oferta e vendedora receba ETH.
 
@@ -2550,7 +2550,7 @@ P0
 - [ ] Atualizar `activeListingsCountByProperty`.
 - [ ] Atualizar `activeEscrowedAmountByProperty`.
 - [ ] Atualizar `totalFreeValueSoldByProperty`.
-- [ ] Atualizar status do imóvel.
+- [ ] Atualizar status do imÃ³vel.
 - [ ] Transferir tokens livres de `address(this)` para comprador.
 - [ ] Transferir ETH para seller com `call`.
 - [ ] Reverter se `call` falhar.
@@ -2558,21 +2558,21 @@ P0
 - [ ] Emitir `ListingStatusUpdated`.
 - [ ] Emitir `PrimarySalePurchased`.
 - [ ] Emitir `SellerPaid`.
-- [ ] Emitir `ParticipantAdded` se aplicável.
+- [ ] Emitir `ParticipantAdded` se aplicÃ¡vel.
 - [ ] Atualizar dashboard.
 - [ ] Mostrar saldo do comprador.
 - [ ] Mostrar ETH recebido pela vendedora.
 - [ ] Bloquear compra duplicada.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
 - [ ] Pessoa B compra 300.000 tokens por 3 ETH.
 - [ ] Pessoa A recebe 3 ETH na wallet.
 - [ ] Pessoa B recebe 300.000 tokens de Direito de Valor Livre.
 - [ ] Pessoa A continua com NFT de usufruto.
 - [ ] Pessoa A continua com 200.000 unidades vinculadas.
-- [ ] Dashboard mostra A com 70% econômico total e B com 30%.
-- [ ] Status volta para `Tokenized` se não houver ofertas ativas.
+- [ ] Dashboard mostra A com 70% econÃ´mico total e B com 30%.
+- [ ] Status volta para `Tokenized` se nÃ£o houver ofertas ativas.
 - [ ] Status vira `SoldOut` se todo valor livre foi vendido.
 
 #### Prioridade
@@ -2581,7 +2581,7 @@ P0
 
 ---
 
-### Milestone 0.10 — Cancelar oferta
+### Milestone 0.10 â€” Cancelar oferta
 
 **Objetivo:** permitir cancelamento seguro de oferta ativa.
 
@@ -2596,17 +2596,17 @@ P0
 - [ ] Atualizar `activeListingsCountByProperty`.
 - [ ] Atualizar `activeEscrowedAmountByProperty`.
 - [ ] Devolver tokens livres para seller.
-- [ ] Atualizar status do imóvel.
+- [ ] Atualizar status do imÃ³vel.
 - [ ] Emitir `PrimarySaleCancelled`.
 - [ ] Emitir `ListingStatusUpdated`.
 - [ ] Atualizar marketplace no frontend.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
 - [ ] Pessoa A cancela oferta ativa.
 - [ ] Tokens em escrow voltam para Pessoa A.
 - [ ] Listing vira `Cancelled`.
-- [ ] Status volta para `Tokenized` se não houver ofertas ativas.
+- [ ] Status volta para `Tokenized` se nÃ£o houver ofertas ativas.
 
 #### Prioridade
 
@@ -2614,9 +2614,9 @@ P0
 
 ---
 
-### Milestone 0.11 — Restrições de transferência
+### Milestone 0.11 â€” RestriÃ§Ãµes de transferÃªncia
 
-**Objetivo:** garantir que os ativos só sejam transferidos pela plataforma.
+**Objetivo:** garantir que os ativos sÃ³ sejam transferidos pela plataforma.
 
 #### Checklist
 
@@ -2627,17 +2627,17 @@ P0
 - [ ] Bloquear `safeTransferFrom` direto do NFT.
 - [ ] Bloquear `approve` do NFT.
 - [ ] Bloquear `setApprovalForAll` do NFT.
-- [ ] Permitir transferência do ERC-20 por `PrimaryValueSale`.
+- [ ] Permitir transferÃªncia do ERC-20 por `PrimaryValueSale`.
 - [ ] Testar operador autorizado.
-- [ ] Testar operador não autorizado.
-- [ ] Exibir mensagem na UI explicando restrição.
+- [ ] Testar operador nÃ£o autorizado.
+- [ ] Exibir mensagem na UI explicando restriÃ§Ã£o.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
-- [ ] Transferência direta do token reverte.
-- [ ] Aprovação do token reverte.
-- [ ] Transferência direta do NFT reverte.
-- [ ] Aprovação do NFT reverte.
+- [ ] TransferÃªncia direta do token reverte.
+- [ ] AprovaÃ§Ã£o do token reverte.
+- [ ] TransferÃªncia direta do NFT reverte.
+- [ ] AprovaÃ§Ã£o do NFT reverte.
 - [ ] Compra via marketplace funciona.
 
 #### Prioridade
@@ -2646,40 +2646,40 @@ P0
 
 ---
 
-### Milestone 0.12 — Frontend e demo guiada
+### Milestone 0.12 â€” Frontend e demo guiada
 
 **Objetivo:** garantir que a banca entenda o fluxo rapidamente.
 
 #### Checklist
 
-- [ ] Criar home com explicação da tese.
-- [ ] Criar tela “Tokenizar minha casa”.
+- [ ] Criar home com explicaÃ§Ã£o da tese.
+- [ ] Criar tela â€œTokenizar minha casaâ€.
 - [ ] Criar mock upload.
-- [ ] Criar tela de status de verificação mock.
-- [ ] Criar tela de tokenização.
-- [ ] Criar seção explicando os três direitos.
-- [ ] Criar dashboard do imóvel.
-- [ ] Criar formulário de venda de Direito de Valor Livre.
+- [ ] Criar tela de status de verificaÃ§Ã£o mock.
+- [ ] Criar tela de tokenizaÃ§Ã£o.
+- [ ] Criar seÃ§Ã£o explicando os trÃªs direitos.
+- [ ] Criar dashboard do imÃ³vel.
+- [ ] Criar formulÃ¡rio de venda de Direito de Valor Livre.
 - [ ] Criar marketplace de Direito de Valor Livre.
-- [ ] Criar visual de distribuição econômica.
-- [ ] Criar visual de valores fiduciários.
+- [ ] Criar visual de distribuiÃ§Ã£o econÃ´mica.
+- [ ] Criar visual de valores fiduciÃ¡rios.
 - [ ] Criar modo demo guiado.
 - [ ] Criar personagens: Pessoa A e Pessoa B.
-- [ ] Criar feedback de transação enviada.
-- [ ] Criar feedback de transação confirmada.
+- [ ] Criar feedback de transaÃ§Ã£o enviada.
+- [ ] Criar feedback de transaÃ§Ã£o confirmada.
 - [ ] Criar estados de erro.
 - [ ] Criar estados de loading.
-- [ ] Criar estado de falha de cotação fiduciária.
-- [ ] Criar estado de fallback de cotação fiduciária.
+- [ ] Criar estado de falha de cotaÃ§Ã£o fiduciÃ¡ria.
+- [ ] Criar estado de fallback de cotaÃ§Ã£o fiduciÃ¡ria.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
-- [ ] Demo completa pode ser apresentada em até 5 minutos.
-- [ ] Fluxo de tokenização é compreensível.
-- [ ] Fluxo de venda de valor livre é compreensível.
-- [ ] Banca entende que A mantém usufruto e valor vinculado.
+- [ ] Demo completa pode ser apresentada em atÃ© 5 minutos.
+- [ ] Fluxo de tokenizaÃ§Ã£o Ã© compreensÃ­vel.
+- [ ] Fluxo de venda de valor livre Ã© compreensÃ­vel.
+- [ ] Banca entende que A mantÃ©m usufruto e valor vinculado.
 - [ ] Banca entende que B compra apenas Direito de Valor Livre.
-- [ ] Banca entende valores em ETH e moedas fiduciárias.
+- [ ] Banca entende valores em ETH e moedas fiduciÃ¡rias.
 
 #### Prioridade
 
@@ -2687,33 +2687,33 @@ P0
 
 ---
 
-### Milestone 0.13 — Testes e preparação da apresentação
+### Milestone 0.13 â€” Testes e preparaÃ§Ã£o da apresentaÃ§Ã£o
 
 **Objetivo:** reduzir risco de falha durante a demo.
 
 #### Checklist
 
-- [ ] Criar testes unitários.
-- [ ] Criar testes de integração.
-- [ ] Testar registro do imóvel.
+- [ ] Criar testes unitÃ¡rios.
+- [ ] Criar testes de integraÃ§Ã£o.
+- [ ] Testar registro do imÃ³vel.
 - [ ] Testar `propertyExists`.
-- [ ] Testar cálculo de `linkedValueUnits`.
-- [ ] Testar cálculo de `freeValueUnits`.
+- [ ] Testar cÃ¡lculo de `linkedValueUnits`.
+- [ ] Testar cÃ¡lculo de `freeValueUnits`.
 - [ ] Testar mock verification.
-- [ ] Testar tokenização.
+- [ ] Testar tokenizaÃ§Ã£o.
 - [ ] Testar mint do NFT.
-- [ ] Testar criação da `UsufructPosition`.
+- [ ] Testar criaÃ§Ã£o da `UsufructPosition`.
 - [ ] Testar mint do ERC-20 livre.
 - [ ] Testar `decimals = 0`.
-- [ ] Testar bloqueio de transferência direta.
+- [ ] Testar bloqueio de transferÃªncia direta.
 - [ ] Testar factory autorizada.
-- [ ] Testar criação de oferta.
+- [ ] Testar criaÃ§Ã£o de oferta.
 - [ ] Testar `listingExists`.
-- [ ] Testar preço proporcional.
+- [ ] Testar preÃ§o proporcional.
 - [ ] Testar `priceWei > 0`.
 - [ ] Testar escrow em `address(this)`.
 - [ ] Testar compra da oferta.
-- [ ] Testar mudança para `Filled` antes de interações.
+- [ ] Testar mudanÃ§a para `Filled` antes de interaÃ§Ãµes.
 - [ ] Testar pagamento para seller.
 - [ ] Testar revert em falha de ETH transfer.
 - [ ] Testar recebimento de tokens pelo comprador.
@@ -2721,25 +2721,25 @@ P0
 - [ ] Testar status `Tokenized`, `ActiveSale` e `SoldOut`.
 - [ ] Testar cancelamento de oferta.
 - [ ] Testar API `/api/fiat-rates`.
-- [ ] Testar cache de cotação.
-- [ ] Testar fallback de cotação.
+- [ ] Testar cache de cotaÃ§Ã£o.
+- [ ] Testar fallback de cotaÃ§Ã£o.
 - [ ] Testar erro sem cache.
-- [ ] Testar hashing determinístico.
+- [ ] Testar hashing determinÃ­stico.
 - [ ] Testar deploy na Sepolia.
 - [ ] Testar app via Docker.
 - [ ] Preparar wallets de demo.
 - [ ] Preparar ETH de Sepolia nas wallets.
-- [ ] Preparar roteiro de apresentação.
+- [ ] Preparar roteiro de apresentaÃ§Ã£o.
 - [ ] Preparar fallback de demo.
 
-#### Critério de aceite
+#### CritÃ©rio de aceite
 
-- [ ] Testes críticos passam.
-- [ ] Contratos estão deployados na Sepolia.
+- [ ] Testes crÃ­ticos passam.
+- [ ] Contratos estÃ£o deployados na Sepolia.
 - [ ] App roda via Docker.
-- [ ] Banco local está preparado.
-- [ ] OKX/cache está funcional.
-- [ ] Wallets de demo têm ETH de Sepolia.
+- [ ] Banco local estÃ¡ preparado.
+- [ ] OKX/cache estÃ¡ funcional.
+- [ ] Wallets de demo tÃªm ETH de Sepolia.
 - [ ] Roteiro da demo foi validado.
 
 #### Prioridade
@@ -2748,118 +2748,118 @@ P0
 
 ---
 
-## 31. Priorização da Fase 0
+## 31. PriorizaÃ§Ã£o da Fase 0
 
-### P0 — Obrigatório
+### P0 â€” ObrigatÃ³rio
 
 - [ ] Docker/local Node.js.
 - [ ] Deploy Foundry fora do container app.
 - [ ] `.env.app` sem chave privada.
-- [ ] Banco local não estruturado via server-side.
+- [ ] Banco local nÃ£o estruturado via server-side.
 - [ ] OKX com cache, timeout e fallback.
-- [ ] Hashing determinístico.
+- [ ] Hashing determinÃ­stico.
 - [ ] Upload mockado de documentos.
-- [ ] Registro on-chain do imóvel.
+- [ ] Registro on-chain do imÃ³vel.
 - [ ] `propertyExists`.
-- [ ] Verificação mock.
-- [ ] Tokenização.
-- [ ] NFT de usufruto único.
-- [ ] Posição de valor vinculado.
+- [ ] VerificaÃ§Ã£o mock.
+- [ ] TokenizaÃ§Ã£o.
+- [ ] NFT de usufruto Ãºnico.
+- [ ] PosiÃ§Ã£o de valor vinculado.
 - [ ] ERC-20 de Direito de Valor Livre via factory.
 - [ ] `decimals = 0`.
-- [ ] Dashboard com separação clara dos direitos.
-- [ ] Oferta primária de Direito de Valor Livre.
-- [ ] Preço proporcional automático.
+- [ ] Dashboard com separaÃ§Ã£o clara dos direitos.
+- [ ] Oferta primÃ¡ria de Direito de Valor Livre.
+- [ ] PreÃ§o proporcional automÃ¡tico.
 - [ ] `listingExists`.
-- [ ] Listagens enumeráveis.
+- [ ] Listagens enumerÃ¡veis.
 - [ ] Escrow em `address(this)`.
 - [ ] Compra da oferta.
 - [ ] Pagamento em ETH para vendedora.
 - [ ] Revert em falha de ETH transfer.
-- [ ] Restrições de transferência e approve.
+- [ ] RestriÃ§Ãµes de transferÃªncia e approve.
 - [ ] Status `Tokenized`, `ActiveSale`, `SoldOut`.
 - [ ] Demo guiada.
-- [ ] Testes críticos.
+- [ ] Testes crÃ­ticos.
 
 ---
 
-## 32. Sequência final da demo
+## 32. SequÃªncia final da demo
 
-1. Pessoa A inicia a aplicação local via Docker.
+1. Pessoa A inicia a aplicaÃ§Ã£o local via Docker.
 2. Pessoa A conecta wallet.
-3. Pessoa A acessa “Tokenizar minha casa”.
+3. Pessoa A acessa â€œTokenizar minha casaâ€.
 4. Pessoa A insere valor de mercado: 10 ETH.
-5. UI mostra valor aproximado em USD e, se disponível, BRL.
+5. UI mostra valor aproximado em USD e, se disponÃ­vel, BRL.
 6. Pessoa A define valor vinculado ao usufruto: 20%.
-7. Pessoa A insere endereço e localização.
+7. Pessoa A insere endereÃ§o e localizaÃ§Ã£o.
 8. Pessoa A envia documentos mockados.
-9. Dados são salvos no banco local via server-side.
-10. Hashes são gerados com `keccak256` sobre JSON estável.
-11. Pessoa A registra imóvel on-chain.
-12. `propertyExists[propertyId]` é definido.
+9. Dados sÃ£o salvos no banco local via server-side.
+10. Hashes sÃ£o gerados com `keccak256` sobre JSON estÃ¡vel.
+11. Pessoa A registra imÃ³vel on-chain.
+12. `propertyExists[propertyId]` Ã© definido.
 13. Pessoa A aprova mock verification.
-14. Pessoa A tokeniza imóvel.
+14. Pessoa A tokeniza imÃ³vel.
 15. Sistema gera NFT de usufruto para Pessoa A com `tokenId = propertyId`.
-16. Sistema cria posição de usufruto com 200.000 unidades vinculadas.
+16. Sistema cria posiÃ§Ã£o de usufruto com 200.000 unidades vinculadas.
 17. Sistema gera 800.000 tokens de Direito de Valor Livre para Pessoa A.
 18. Pessoa A define venda de 300.000 tokens livres.
-19. Contrato calcula preço automático de 3 ETH.
-20. UI mostra preço equivalente em USD e, se disponível, BRL.
-21. Tokens livres são movidos para escrow em `PrimaryValueSale`.
+19. Contrato calcula preÃ§o automÃ¡tico de 3 ETH.
+20. UI mostra preÃ§o equivalente em USD e, se disponÃ­vel, BRL.
+21. Tokens livres sÃ£o movidos para escrow em `PrimaryValueSale`.
 22. Pessoa B compra a oferta pagando 3 ETH.
 23. Listing muda para `Filled`.
 24. Pessoa B recebe 300.000 tokens livres.
 25. Pessoa A recebe 3 ETH.
-26. Pessoa B é adicionada como participante.
+26. Pessoa B Ã© adicionada como participante.
 27. Dashboard mostra:
-    - Pessoa A mantém usufruto;
-    - Pessoa A mantém 20% vinculado;
-    - Pessoa A mantém 50% livre;
-    - Pessoa A tem 70% econômico total;
-    - Pessoa B possui 30% econômico total;
-    - Pessoa B não possui direito de uso;
-    - valores aparecem em ETH, USD e, quando disponível, BRL.
+    - Pessoa A mantÃ©m usufruto;
+    - Pessoa A mantÃ©m 20% vinculado;
+    - Pessoa A mantÃ©m 50% livre;
+    - Pessoa A tem 70% econÃ´mico total;
+    - Pessoa B possui 30% econÃ´mico total;
+    - Pessoa B nÃ£o possui direito de uso;
+    - valores aparecem em ETH, USD e, quando disponÃ­vel, BRL.
 
 ---
 
-## 33. Definição de pronto da Fase 0
+## 33. DefiniÃ§Ã£o de pronto da Fase 0
 
-A Fase 0 está pronta quando:
+A Fase 0 estÃ¡ pronta quando:
 
 - [ ] App roda localmente via Docker.
 - [ ] Foundry/deploy roda fora do container app.
-- [ ] `.env.app` não contém chave privada.
+- [ ] `.env.app` nÃ£o contÃ©m chave privada.
 - [ ] Wallet conecta.
-- [ ] Dados mockados são salvos localmente via server-side.
-- [ ] Hashes são gerados de forma determinística.
+- [ ] Dados mockados sÃ£o salvos localmente via server-side.
+- [ ] Hashes sÃ£o gerados de forma determinÃ­stica.
 - [ ] API OKX funciona com cache, timeout e fallback.
-- [ ] Valores fiduciários aparecem na UI em USD e, quando disponível, BRL.
-- [ ] Imóvel é registrado on-chain.
+- [ ] Valores fiduciÃ¡rios aparecem na UI em USD e, quando disponÃ­vel, BRL.
+- [ ] ImÃ³vel Ã© registrado on-chain.
 - [ ] `propertyExists` funciona.
-- [ ] Verificação mock funciona.
-- [ ] Imóvel é tokenizado.
-- [ ] NFT de usufruto é mintado para a proprietária.
+- [ ] VerificaÃ§Ã£o mock funciona.
+- [ ] ImÃ³vel Ã© tokenizado.
+- [ ] NFT de usufruto Ã© mintado para a proprietÃ¡ria.
 - [ ] `tokenId = propertyId`.
-- [ ] Posição de valor vinculado é criada.
-- [ ] ERC-20 de Direito de Valor Livre é criado via factory.
+- [ ] PosiÃ§Ã£o de valor vinculado Ã© criada.
+- [ ] ERC-20 de Direito de Valor Livre Ã© criado via factory.
 - [ ] ERC-20 usa `decimals = 0`.
 - [ ] ERC-20 minta apenas `freeValueUnits`.
-- [ ] Proprietária cria oferta de venda de valor livre.
-- [ ] Preço da oferta é calculado automaticamente.
-- [ ] `priceWei > 0` é validado.
+- [ ] ProprietÃ¡ria cria oferta de venda de valor livre.
+- [ ] PreÃ§o da oferta Ã© calculado automaticamente.
+- [ ] `priceWei > 0` Ã© validado.
 - [ ] `listingExists` funciona.
-- [ ] Tokens livres são travados em `address(this)`.
+- [ ] Tokens livres sÃ£o travados em `address(this)`.
 - [ ] Comprador compra oferta.
 - [ ] Listing muda para `Filled` antes de transferir ETH.
 - [ ] Vendedora recebe ETH.
 - [ ] Falha de ETH transfer reverte.
 - [ ] Comprador recebe Direito de Valor Livre.
-- [ ] Participantes são listáveis.
-- [ ] NFT de usufruto não é transferido.
-- [ ] Valor vinculado não é transferido.
-- [ ] Status do imóvel atualiza corretamente.
-- [ ] Dashboard mostra distribuição correta.
-- [ ] Transferências diretas são bloqueadas.
+- [ ] Participantes sÃ£o listÃ¡veis.
+- [ ] NFT de usufruto nÃ£o Ã© transferido.
+- [ ] Valor vinculado nÃ£o Ã© transferido.
+- [ ] Status do imÃ³vel atualiza corretamente.
+- [ ] Dashboard mostra distribuiÃ§Ã£o correta.
+- [ ] TransferÃªncias diretas sÃ£o bloqueadas.
 - [ ] `approve` reverte nos tokens restritos.
-- [ ] Testes críticos passam.
+- [ ] Testes crÃ­ticos passam.
 - [ ] Demo guiada funciona.

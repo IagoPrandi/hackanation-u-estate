@@ -31,6 +31,7 @@ library ProtocolTypes {
         bytes32 metadataHash;
         bytes32 locationHash;
         bytes32 documentsHash;
+        address valueToken;
         PropertyStatus status;
     }
 

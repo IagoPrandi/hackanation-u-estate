@@ -7,6 +7,7 @@ import type {
   PropertyDraftInput,
   PropertyMockVerificationInput,
   PropertyOnchainRegistrationInput,
+  PropertyTokenizationInput,
   SavedPropertyRecord,
 } from "@/offchain/schemas";
 
@@ -100,6 +101,47 @@ export async function savePropertyMockVerification(
   property.onchainRegistration.status = "MockVerified";
   property.onchainRegistration.verificationTxHash = input.txHash;
   property.onchainRegistration.verifiedAt = new Date().toISOString();
+
+  await db.write();
+
+  return property;
+}
+
+export async function savePropertyTokenization(
+  input: PropertyTokenizationInput,
+) {
+  const db = await getDb();
+  const property = db.data.properties.find(
+    (record) => record.localPropertyId === input.localPropertyId,
+  );
+
+  if (!property) {
+    throw new Error("Property draft not found.");
+  }
+
+  if (!property.onchainRegistration) {
+    throw new Error("Property draft is not registered on-chain.");
+  }
+
+  if (property.onchainRegistration.propertyId !== input.propertyId) {
+    throw new Error("On-chain property id does not match the saved draft.");
+  }
+
+  if (property.onchainRegistration.status === "PendingMockVerification") {
+    throw new Error("Property draft must be mock-verified before tokenization.");
+  }
+
+  if (property.onchainRegistration.status === "Tokenized") {
+    throw new Error("Property draft is already tokenized.");
+  }
+
+  property.onchainRegistration.status = "Tokenized";
+  property.onchainRegistration.tokenizationTxHash = input.txHash;
+  property.onchainRegistration.tokenizedAt = new Date().toISOString();
+  property.onchainRegistration.valueTokenAddress = input.valueTokenAddress;
+  property.onchainRegistration.usufructTokenId = input.usufructTokenId;
+  property.onchainRegistration.linkedValueUnits = input.linkedValueUnits;
+  property.onchainRegistration.freeValueUnits = input.freeValueUnits;
 
   await db.write();
 

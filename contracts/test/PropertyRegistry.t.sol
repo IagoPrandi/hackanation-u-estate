@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {PrimaryValueSale} from "../src/PrimaryValueSale.sol";
 import {PropertyRegistry} from "../src/PropertyRegistry.sol";
+import {PropertyValueToken} from "../src/PropertyValueToken.sol";
+import {PropertyValueTokenFactory} from "../src/PropertyValueTokenFactory.sol";
 import {ProtocolTypes} from "../src/libraries/ProtocolTypes.sol";
+import {UsufructRightNFT} from "../src/UsufructRightNFT.sol";
 
 interface Vm {
     function expectRevert(bytes calldata revertData) external;
@@ -14,6 +18,9 @@ contract PropertyRegistryTest {
         Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     PropertyRegistry internal registry;
+    PrimaryValueSale internal sale;
+    UsufructRightNFT internal usufructRightNft;
+    PropertyValueTokenFactory internal factory;
 
     address internal constant ALICE = address(0xA11CE);
     address internal constant BOB = address(0xB0B);
@@ -23,6 +30,18 @@ contract PropertyRegistryTest {
 
     function setUp() public {
         registry = new PropertyRegistry();
+        sale = new PrimaryValueSale(address(registry));
+        usufructRightNft = new UsufructRightNFT(address(registry));
+        factory = new PropertyValueTokenFactory(
+            address(registry),
+            address(sale)
+        );
+
+        registry.configureExternalContracts(
+            address(usufructRightNft),
+            address(factory),
+            address(sale)
+        );
     }
 
     function testRegisterPropertyStoresRecordAndIndexesOwner() external {
@@ -49,6 +68,7 @@ contract PropertyRegistryTest {
             bytes32 metadataHash,
             bytes32 locationHash,
             bytes32 documentsHash,
+            address valueToken,
             ProtocolTypes.PropertyStatus status
         ) = registry.properties(propertyId);
 
@@ -61,6 +81,7 @@ contract PropertyRegistryTest {
         require(metadataHash == METADATA_HASH, "metadata hash mismatch");
         require(locationHash == LOCATION_HASH, "location hash mismatch");
         require(documentsHash == DOCUMENTS_HASH, "documents hash mismatch");
+        require(valueToken == address(0), "value token should be empty");
         require(
             uint8(status) ==
                 uint8(ProtocolTypes.PropertyStatus.PendingMockVerification),
@@ -211,7 +232,9 @@ contract PropertyRegistryTest {
     }
 
     function testConfigureExternalContractsRejectsZeroAddress() external {
-        vm.expectRevert(abi.encodeWithSelector(PropertyRegistry.ZeroAddress.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyRegistry.ZeroAddress.selector)
+        );
         registry.configureExternalContracts(address(0), BOB, address(0xCAFE));
     }
 
@@ -229,6 +252,7 @@ contract PropertyRegistryTest {
         registry.mockVerifyProperty(propertyId);
 
         (
+            ,
             ,
             ,
             ,
@@ -263,6 +287,7 @@ contract PropertyRegistryTest {
         registry.mockVerifyProperty(propertyId);
 
         (
+            ,
             ,
             ,
             ,
@@ -338,5 +363,196 @@ contract PropertyRegistryTest {
             abi.encodeWithSelector(PropertyRegistry.Unauthorized.selector)
         );
         registry.grantRole(mockVerifierRole, BOB);
+    }
+
+    function testTokenizePropertyMintsUsufructAndFreeValueToken() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        address valueTokenAddress = registry.tokenizeProperty(propertyId);
+
+        {
+            (
+                uint256 storedPropertyId,
+                address storedOwner,
+                ,
+                uint16 linkedValueBps,
+                uint256 linkedValueUnits,
+                uint256 freeValueUnits,
+                ,
+                ,
+                ,
+                address storedValueToken,
+                ProtocolTypes.PropertyStatus status
+            ) = registry.properties(propertyId);
+
+            require(storedPropertyId == propertyId, "stored property id mismatch");
+            require(storedOwner == ALICE, "stored owner mismatch");
+            require(linkedValueBps == 2_000, "linked bps mismatch");
+            require(linkedValueUnits == 200_000, "linked units mismatch");
+            require(freeValueUnits == 800_000, "free units mismatch");
+            require(storedValueToken == valueTokenAddress, "value token mismatch");
+            require(
+                uint8(status) == uint8(ProtocolTypes.PropertyStatus.Tokenized),
+                "tokenized status mismatch"
+            );
+        }
+
+        {
+            (
+                uint256 positionPropertyId,
+                uint256 tokenId,
+                address holder,
+                uint256 positionLinkedValueUnits,
+                uint16 positionLinkedValueBps,
+                bool active
+            ) = registry.usufructPositions(propertyId);
+
+            require(positionPropertyId == propertyId, "position property mismatch");
+            require(tokenId == propertyId, "usufruct token id mismatch");
+            require(holder == ALICE, "usufruct holder mismatch");
+            require(
+                positionLinkedValueUnits == 200_000,
+                "position linked units mismatch"
+            );
+            require(
+                positionLinkedValueBps == 2_000,
+                "position linked bps mismatch"
+            );
+            require(active, "usufruct position should be active");
+        }
+
+        require(
+            usufructRightNft.ownerOf(propertyId) == ALICE,
+            "nft owner mismatch"
+        );
+        require(usufructRightNft.balanceOf(ALICE) == 1, "nft balance mismatch");
+
+        PropertyValueToken valueToken = PropertyValueToken(valueTokenAddress);
+        require(
+            factory.valueTokenByPropertyId(propertyId) == valueTokenAddress,
+            "factory value token mismatch"
+        );
+        require(
+            valueToken.authorizedOperator() == address(sale),
+            "authorized operator mismatch"
+        );
+        require(valueToken.registry() == address(registry), "registry mismatch");
+        require(valueToken.propertyId() == propertyId, "token property id mismatch");
+        require(valueToken.decimals() == 0, "token decimals mismatch");
+        require(valueToken.totalSupply() == 800_000, "token supply mismatch");
+        require(
+            valueToken.balanceOf(ALICE) == 800_000,
+            "owner token balance mismatch"
+        );
+    }
+
+    function testTokenizePropertyRejectsUnauthorizedCaller() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(BOB);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyRegistry.Unauthorized.selector)
+        );
+        registry.tokenizeProperty(propertyId);
+    }
+
+    function testTokenizePropertyRejectsWrongStatus() external {
+        vm.prank(ALICE);
+        uint256 propertyId = registry.registerProperty(
+            10 ether,
+            2_000,
+            METADATA_HASH,
+            DOCUMENTS_HASH,
+            LOCATION_HASH
+        );
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyRegistry.InvalidPropertyStatus.selector)
+        );
+        registry.tokenizeProperty(propertyId);
+    }
+
+    function testTokenizePropertyRejectsSecondTokenization() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        registry.tokenizeProperty(propertyId);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyRegistry.InvalidPropertyStatus.selector)
+        );
+        registry.tokenizeProperty(propertyId);
+    }
+
+    function testTokenizePropertyRejectsMissingProperty() external {
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyRegistry.PropertyNotFound.selector)
+        );
+        registry.tokenizeProperty(999);
+    }
+
+    function testFactoryOnlyAllowsRegistryToCreateTokens() external {
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyValueTokenFactory.Unauthorized.selector)
+        );
+        factory.createValueToken(1, ALICE, 800_000);
+    }
+
+    function testUsufructRightNftBlocksDirectTransferAndApproval() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        registry.tokenizeProperty(propertyId);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(UsufructRightNFT.TransfersDisabled.selector)
+        );
+        usufructRightNft.transferFrom(ALICE, BOB, propertyId);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(UsufructRightNFT.ApprovalsDisabled.selector)
+        );
+        usufructRightNft.approve(BOB, propertyId);
+    }
+
+    function testPropertyValueTokenBlocksDirectTransferAndApproval() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        address valueTokenAddress = registry.tokenizeProperty(propertyId);
+        PropertyValueToken valueToken = PropertyValueToken(valueTokenAddress);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyValueToken.TransfersDisabled.selector)
+        );
+        valueToken.transfer(BOB, 1);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyValueToken.ApprovalsDisabled.selector)
+        );
+        valueToken.approve(BOB, 1);
+    }
+
+    function _registerAndVerifyProperty() internal returns (uint256 propertyId) {
+        vm.prank(ALICE);
+        propertyId = registry.registerProperty(
+            10 ether,
+            2_000,
+            METADATA_HASH,
+            DOCUMENTS_HASH,
+            LOCATION_HASH
+        );
+
+        vm.prank(ALICE);
+        registry.mockVerifyProperty(propertyId);
     }
 }

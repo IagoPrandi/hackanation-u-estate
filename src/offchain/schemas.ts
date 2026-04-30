@@ -96,9 +96,42 @@ export const propertyMockVerificationInputSchema = z.object({
     .refine((value) => isHash(value), "Transaction hash must be a valid hash."),
 });
 
+export const propertyTokenizationInputSchema = z.object({
+  kind: z.literal("tokenization"),
+  localPropertyId: z.uuid(),
+  propertyId: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Property id must be a positive integer string."),
+  txHash: z
+    .string()
+    .trim()
+    .refine((value) => isHash(value), "Transaction hash must be a valid hash."),
+  valueTokenAddress: z
+    .string()
+    .trim()
+    .refine((value) => isAddress(value), "Value token address must be valid."),
+  usufructTokenId: z
+    .string()
+    .trim()
+    .regex(
+      /^[1-9]\d*$/,
+      "Usufruct token id must be a positive integer string.",
+    ),
+  linkedValueUnits: z
+    .string()
+    .trim()
+    .regex(/^\d+$/, "Linked value units must be an integer string."),
+  freeValueUnits: z
+    .string()
+    .trim()
+    .regex(/^\d+$/, "Free value units must be an integer string."),
+});
+
 export const propertyOnchainSyncSchema = z.discriminatedUnion("kind", [
   propertyOnchainRegistrationInputSchema,
   propertyMockVerificationInputSchema,
+  propertyTokenizationInputSchema,
 ]);
 
 export type PropertyDraftInput = z.infer<typeof propertyIntakeSchema>;
@@ -109,6 +142,9 @@ export type PropertyOnchainRegistrationInput = z.infer<
 >;
 export type PropertyMockVerificationInput = z.infer<
   typeof propertyMockVerificationInputSchema
+>;
+export type PropertyTokenizationInput = z.infer<
+  typeof propertyTokenizationInputSchema
 >;
 export type PropertyOnchainSyncInput = z.infer<typeof propertyOnchainSyncSchema>;
 
@@ -186,10 +222,16 @@ export type SavedPropertyRecord = PropertyDraftPreview & {
   onchainRegistration?: {
     propertyId: string;
     txHash: string;
-    status: "PendingMockVerification" | "MockVerified";
+    status: "PendingMockVerification" | "MockVerified" | "Tokenized";
     registeredAt: string;
     verificationTxHash?: string;
     verifiedAt?: string;
+    tokenizationTxHash?: string;
+    tokenizedAt?: string;
+    valueTokenAddress?: string;
+    usufructTokenId?: string;
+    linkedValueUnits?: string;
+    freeValueUnits?: string;
   };
 };
 

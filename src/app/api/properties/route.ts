@@ -4,6 +4,7 @@ import {
   listPropertyDrafts,
   savePropertyMockVerification,
   saveOnchainPropertyRegistration,
+  savePropertyTokenization,
 } from "@/offchain/repository";
 import {
   propertyIntakeSchema,
@@ -62,7 +63,9 @@ export async function PATCH(request: Request) {
     const record =
       parsedPayload.data.kind === "registration"
         ? await saveOnchainPropertyRegistration(parsedPayload.data)
-        : await savePropertyMockVerification(parsedPayload.data);
+        : parsedPayload.data.kind === "mockVerification"
+          ? await savePropertyMockVerification(parsedPayload.data)
+          : await savePropertyTokenization(parsedPayload.data);
 
     return NextResponse.json({ record });
   } catch (error) {
@@ -73,7 +76,9 @@ export async function PATCH(request: Request) {
         ? 404
         : message === "Property draft already linked to an on-chain property." ||
             message === "Property draft is already mock-verified." ||
+            message === "Property draft is already tokenized." ||
             message === "Property draft is not registered on-chain." ||
+            message === "Property draft must be mock-verified before tokenization." ||
             message === "On-chain property id does not match the saved draft."
           ? 409
           : 500;
