@@ -7,14 +7,17 @@
     "build": "dotenv -e .env.app -- next build",
     "start": "dotenv -e .env.app -- next start",
     "lint": "eslint . --ignore-pattern bootstrap-app --ignore-pattern .next",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.5",
+    "decimal.js": "^10.6.0",
     "lowdb": "^7.0.1",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "server-only": "^0.0.1",
     "viem": "^2.39.0",
     "wagmi": "^2.19.5",
     "zod": "^4.1.12"
@@ -28,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.8"
   }
 }

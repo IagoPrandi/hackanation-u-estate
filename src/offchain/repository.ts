@@ -4,6 +4,7 @@ import { getDb } from "@/offchain/db";
 import { parseDecimalToUnits } from "@/lib/safe-decimal";
 import { hashStableJson } from "@/offchain/hash";
 import {
+  type FiatRatesSnapshot,
   normalizeCoordinate,
   type DocumentsMetadataV1,
   type LocationMetadataV1,
@@ -33,6 +34,21 @@ export async function listPropertyDrafts() {
   return [...db.data.properties].sort((left, right) =>
     right.createdAt.localeCompare(left.createdAt),
   );
+}
+
+export async function readFiatRatesCache() {
+  const db = await getDb();
+
+  return db.data.fiatRatesCache;
+}
+
+export async function writeFiatRatesCache(snapshot: FiatRatesSnapshot) {
+  const db = await getDb();
+
+  db.data.fiatRatesCache = snapshot;
+  await db.write();
+
+  return snapshot;
 }
 
 export async function createPropertyDraft(

@@ -1,3 +1,21 @@
 {
-  "properties": []
+  "properties": [],
+  "fiatRatesCache": {
+    "provider": "okx",
+    "base": "ETH",
+    "routes": {
+      "usd": "ETH-USDC",
+      "brl": "ETH-USDC * USDC-BRL"
+    },
+    "rates": {
+      "usd": "2260.37",
+      "brl": "11306.37074"
+    },
+    "unavailable": [],
+    "optionalRates": {
+      "eur": null,
+      "jpy": null
+    },
+    "updatedAt": "2026-04-30T10:56:45.925Z"
+  }
 }

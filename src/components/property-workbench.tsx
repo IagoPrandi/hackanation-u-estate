@@ -1,20 +1,29 @@
 "use client";
 
 import {
-  startTransition,
   type FormEvent,
   type ReactNode,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 import { sepolia } from "wagmi/chains";
 import { useAccount } from "wagmi";
+import { WalletPanel } from "@/components/wallet-panel";
+import {
+  divideDecimalStrings,
+  formatDecimalForDisplay,
+  multiplyDecimalStrings,
+  parseDecimalToUnits,
+  scaleBpsToPercent,
+  weiToEthDecimalString,
+} from "@/lib/safe-decimal";
 import type {
+  FiatRatesResponse,
+  FiatRatesSuccessResponse,
   PropertyDraftInput,
   SavedPropertyRecord,
 } from "@/offchain/schemas";
-import { parseDecimalToUnits, scaleBpsToPercent } from "@/lib/safe-decimal";
-import { WalletPanel } from "@/components/wallet-panel";
 
 type PropertyWorkbenchProps = {
   initialProperties: SavedPropertyRecord[];
@@ -22,6 +31,15 @@ type PropertyWorkbenchProps = {
 
 type FormState = Omit<PropertyDraftInput, "ownerWallet">;
 
+type PricingPreview = {
+  marketValueEth: string;
+  listedUnits: string;
+  listedPercent: string;
+  offerPriceEth: string;
+  unitPriceEth: string;
+};
+
+const TOTAL_VALUE_UNITS = "1000000";
 const initialFormState: FormState = {
   marketValueEth: "10",
   linkedValueBps: 2000,
@@ -41,6 +59,7 @@ export function PropertyWorkbench({
 }: PropertyWorkbenchProps) {
   const { address, chainId, isConnected } = useAccount();
   const [formState, setFormState] = useState<FormState>(initialFormState);
+  const [listedUnits, setListedUnits] = useState("300000");
   const [properties, setProperties] =
     useState<SavedPropertyRecord[]>(initialProperties);
   const [lastSaved, setLastSaved] = useState<SavedPropertyRecord | null>(
@@ -48,6 +67,55 @@ export function PropertyWorkbench({
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [fiatRates, setFiatRates] = useState<FiatRatesSuccessResponse | null>(
+    null,
+  );
+  const [fiatErrorMessage, setFiatErrorMessage] = useState<string | null>(null);
+  const [isLoadingFiatRates, setIsLoadingFiatRates] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadFiatRates() {
+      try {
+        setIsLoadingFiatRates(true);
+        setFiatErrorMessage(null);
+
+        const response = await fetch("/api/fiat-rates", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const payload = (await response.json()) as FiatRatesResponse;
+
+        if (!response.ok || !payload.ok) {
+          throw new Error(
+            payload.ok ? "Could not load fiat rates." : payload.message,
+          );
+        }
+
+        setFiatRates(payload);
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setFiatRates(null);
+        setFiatErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not load fiat rates.",
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingFiatRates(false);
+        }
+      }
+    }
+
+    void loadFiatRates();
+
+    return () => controller.abort();
+  }, []);
 
   const marketValuePreview = useMemo(() => {
     try {
@@ -68,6 +136,41 @@ export function PropertyWorkbench({
     return `${normalizedLat.toFixed(6)}, ${normalizedLng.toFixed(6)}`;
   }, [formState.lat, formState.lng]);
 
+  const pricingPreview = useMemo<PricingPreview | null>(() => {
+    if (!/^\d+$/.test(listedUnits) || listedUnits === "0") {
+      return null;
+    }
+
+    try {
+      const marketValueEth = formState.marketValueEth.trim();
+      const unitPriceEth = divideDecimalStrings(
+        marketValueEth,
+        TOTAL_VALUE_UNITS,
+        8,
+      );
+      const offerPriceEth = multiplyDecimalStrings(
+        unitPriceEth,
+        listedUnits,
+        8,
+      );
+      const listedPercent = divideDecimalStrings(
+        multiplyDecimalStrings(listedUnits, "100", 4),
+        TOTAL_VALUE_UNITS,
+        4,
+      );
+
+      return {
+        marketValueEth,
+        listedUnits,
+        listedPercent,
+        offerPriceEth,
+        unitPriceEth,
+      };
+    } catch {
+      return null;
+    }
+  }, [formState.marketValueEth, listedUnits]);
+
   const updateField = <Key extends keyof FormState>(
     field: Key,
     value: FormState[Key],
@@ -86,41 +189,37 @@ export function PropertyWorkbench({
     setErrorMessage(null);
     setIsSaving(true);
 
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/properties", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...formState,
-            ownerWallet: address,
-          }),
-        });
+    try {
+      const response = await fetch("/api/properties", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formState,
+          ownerWallet: address,
+        }),
+      });
 
-        const payload = (await response.json()) as
-          | { record: SavedPropertyRecord }
-          | { error: string };
+      const payload = (await response.json()) as
+        | { record: SavedPropertyRecord }
+        | { error: string };
 
-        if (!response.ok || !("record" in payload)) {
-          throw new Error(
-            "error" in payload ? payload.error : "Could not save the property.",
-          );
-        }
-
-        setProperties((current) => [payload.record, ...current]);
-        setLastSaved(payload.record);
-      } catch (error) {
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Unexpected save failure.",
+      if (!response.ok || !("record" in payload)) {
+        throw new Error(
+          "error" in payload ? payload.error : "Could not save the property.",
         );
-      } finally {
-        setIsSaving(false);
       }
-    });
+
+      setProperties((current) => [payload.record, ...current]);
+      setLastSaved(payload.record);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unexpected save failure.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -129,14 +228,14 @@ export function PropertyWorkbench({
         <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:px-10 lg:py-10">
           <div className="space-y-6">
             <div className="space-y-3">
-              <p className="soft-label">Milestone 0.1</p>
+              <p className="soft-label">Milestone 0.2</p>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
-                Local Docker-ready setup for a usufruct-backed property MVP.
+                Fiat pricing through OKX, cached server-side for the MVP flow.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                This workspace already wires Sepolia, deterministic hashing,
-                wallet connection, and server-side lowdb persistence inside the
-                same Next.js runtime expected by the PRD.
+                The frontend consumes a local pricing route, while ETH settlement
+                stays untouched. USD is primary, BRL is runtime-validated, and
+                cached fallback remains visible to the operator.
               </p>
             </div>
 
@@ -152,18 +251,34 @@ export function PropertyWorkbench({
                 }
               />
               <StatCard
+                label="USD per ETH"
+                value={getFiatRateLabel("usd", fiatRates, isLoadingFiatRates)}
+              />
+              <StatCard
+                label="BRL per ETH"
+                value={getFiatRateLabel("brl", fiatRates, isLoadingFiatRates)}
+              />
+              <StatCard
                 label="Drafts saved"
                 value={properties.length.toString()}
               />
-              <StatCard
-                label="Market value preview"
-                value={marketValuePreview}
-              />
-              <StatCard
-                label="Normalized coordinates"
-                value={normalizedCoordinatePreview}
-              />
             </div>
+
+            {fiatErrorMessage ? (
+              <Notice tone="danger">
+                Fiat route unavailable. {fiatErrorMessage}
+              </Notice>
+            ) : null}
+
+            {fiatRates?.cached ? (
+              <Notice tone="warning">
+                Cached fiat rates in use from {formatTimestamp(fiatRates.updatedAt)}.
+              </Notice>
+            ) : null}
+
+            {fiatRates?.warning === "BRL_ROUTE_UNAVAILABLE" ? (
+              <Notice tone="warning">BRL unavailable at the moment.</Notice>
+            ) : null}
           </div>
 
           <WalletPanel />
@@ -200,7 +315,7 @@ export function PropertyWorkbench({
               />
             </Field>
 
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-3">
               <Field label="Market value (ETH)">
                 <input
                   value={formState.marketValueEth}
@@ -221,6 +336,15 @@ export function PropertyWorkbench({
                       Number(event.target.value || "0"),
                     )
                   }
+                  className={inputClassName}
+                  inputMode="numeric"
+                />
+              </Field>
+
+              <Field label="Listed free value units">
+                <input
+                  value={listedUnits}
+                  onChange={(event) => setListedUnits(event.target.value)}
                   className={inputClassName}
                   inputMode="numeric"
                 />
@@ -308,6 +432,20 @@ export function PropertyWorkbench({
               </span>
             </div>
 
+            <div className="rounded-3xl border border-line bg-white/75 p-4 text-sm text-muted">
+              <p className="soft-label">Input previews</p>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <p>
+                  <span className="font-semibold text-foreground">Wei preview:</span>{" "}
+                  <span className="mono">{marketValuePreview}</span>
+                </p>
+                <p>
+                  <span className="font-semibold text-foreground">Coordinates:</span>{" "}
+                  <span className="mono">{normalizedCoordinatePreview}</span>
+                </p>
+              </div>
+            </div>
+
             {errorMessage ? (
               <div className="rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
                 {errorMessage}
@@ -325,6 +463,48 @@ export function PropertyWorkbench({
         </form>
 
         <div className="flex flex-col gap-6">
+          <section className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="soft-label">Fiat pricing preview</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em]">
+                  House, offer, and unit values
+                </h2>
+              </div>
+              <div className="rounded-full border border-line bg-white/70 px-4 py-2 text-sm font-medium text-muted">
+                Total units: {formatDecimalForDisplay(TOTAL_VALUE_UNITS, 0)}
+              </div>
+            </div>
+
+            {pricingPreview ? (
+              <div className="mt-6 space-y-4">
+                <PricingRow
+                  label="House market value"
+                  ethValue={pricingPreview.marketValueEth}
+                  fiatRates={fiatRates}
+                />
+                <PricingRow
+                  label={`Offer price (${formatDecimalForDisplay(
+                    pricingPreview.listedUnits,
+                    0,
+                  )} units / ${pricingPreview.listedPercent}%)`}
+                  ethValue={pricingPreview.offerPriceEth}
+                  fiatRates={fiatRates}
+                />
+                <PricingRow
+                  label="Value per unit"
+                  ethValue={pricingPreview.unitPriceEth}
+                  fiatRates={fiatRates}
+                />
+              </div>
+            ) : (
+              <p className="mt-6 text-sm leading-7 text-muted">
+                Enter a valid ETH market value and positive listed units to
+                preview USD and BRL equivalents.
+              </p>
+            )}
+          </section>
+
           <section className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
             <p className="soft-label">Last saved hashes</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em]">
@@ -360,56 +540,66 @@ export function PropertyWorkbench({
 
             <div className="mt-6 space-y-4">
               {properties.length ? (
-                properties.map((property) => (
-                  <article
-                    key={property.localPropertyId}
-                    className="rounded-3xl border border-line bg-white/75 p-5"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-base font-semibold text-foreground">
-                          {property.metadata.description || "Unnamed property"}
-                        </p>
-                        <p className="mt-1 text-sm text-muted">
-                          {property.location.address.street},{" "}
-                          {property.location.address.number},{" "}
-                          {property.location.address.city}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-accent">
-                        {scaleBpsToPercent(property.metadata.linkedValueBps)} linked
-                      </span>
-                    </div>
+                properties.map((property) => {
+                  const marketValueEth = weiToEthDecimalString(
+                    property.metadata.marketValueWei,
+                    8,
+                  );
 
-                    <div className="mt-4 grid gap-3 text-sm text-muted md:grid-cols-2">
-                      <div>
-                        <p className="soft-label">Local property id</p>
-                        <p className="mono mt-1 break-all text-foreground">
-                          {property.localPropertyId}
-                        </p>
+                  return (
+                    <article
+                      key={property.localPropertyId}
+                      className="rounded-3xl border border-line bg-white/75 p-5"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-base font-semibold text-foreground">
+                            {property.metadata.description || "Unnamed property"}
+                          </p>
+                          <p className="mt-1 text-sm text-muted">
+                            {property.location.address.street},{" "}
+                            {property.location.address.number},{" "}
+                            {property.location.address.city}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-accent">
+                          {scaleBpsToPercent(property.metadata.linkedValueBps)} linked
+                        </span>
                       </div>
-                      <div>
-                        <p className="soft-label">Owner wallet</p>
-                        <p className="mono mt-1 break-all text-foreground">
-                          {property.metadata.ownerWallet}
-                        </p>
+
+                      <div className="mt-4 grid gap-3 text-sm text-muted md:grid-cols-2">
+                        <div>
+                          <p className="soft-label">Local property id</p>
+                          <p className="mono mt-1 break-all text-foreground">
+                            {property.localPropertyId}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="soft-label">Owner wallet</p>
+                          <p className="mono mt-1 break-all text-foreground">
+                            {property.metadata.ownerWallet}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="soft-label">Market value</p>
+                          <p className="mono mt-1 break-all text-foreground">
+                            {formatEthLabel(marketValueEth)}
+                          </p>
+                          <p className="mt-1 text-xs text-muted">
+                            {renderFiatSummary(marketValueEth, fiatRates)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="soft-label">Coordinates</p>
+                          <p className="mono mt-1 text-foreground">
+                            {property.location.location.lat},{" "}
+                            {property.location.location.lng}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="soft-label">Market value (wei)</p>
-                        <p className="mono mt-1 break-all text-foreground">
-                          {property.metadata.marketValueWei}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="soft-label">Coordinates</p>
-                        <p className="mono mt-1 text-foreground">
-                          {property.location.location.lat},{" "}
-                          {property.location.location.lng}
-                        </p>
-                      </div>
-                    </div>
-                  </article>
-                ))
+                    </article>
+                  );
+                })
               ) : (
                 <p className="text-sm leading-7 text-muted">
                   No drafts stored yet. The first successful POST to
@@ -452,6 +642,47 @@ function HashRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function Notice({
+  children,
+  tone,
+}: {
+  children: ReactNode;
+  tone: "danger" | "warning";
+}) {
+  const toneClassName =
+    tone === "danger"
+      ? "border-danger/20 bg-danger/5 text-danger"
+      : "border-amber-500/25 bg-amber-500/10 text-amber-900";
+
+  return (
+    <div className={`rounded-2xl border px-4 py-3 text-sm ${toneClassName}`}>
+      {children}
+    </div>
+  );
+}
+
+function PricingRow({
+  label,
+  ethValue,
+  fiatRates,
+}: {
+  label: string;
+  ethValue: string;
+  fiatRates: FiatRatesSuccessResponse | null;
+}) {
+  return (
+    <div className="rounded-3xl border border-line bg-white/75 p-4">
+      <p className="soft-label">{label}</p>
+      <p className="mt-2 text-base font-semibold text-foreground">
+        {formatEthLabel(ethValue)}
+      </p>
+      <p className="mt-2 text-sm leading-6 text-muted">
+        {renderFiatSummary(ethValue, fiatRates)}
+      </p>
+    </div>
+  );
+}
+
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-3xl border border-line bg-white/75 p-5">
@@ -459,6 +690,80 @@ function StatCard({ label, value }: { label: string; value: string }) {
       <p className="mt-3 text-lg font-semibold text-foreground">{value}</p>
     </div>
   );
+}
+
+function formatEthLabel(value: string) {
+  return `${formatDecimalForDisplay(value, 6)} ETH`;
+}
+
+function getFiatRateLabel(
+  currency: "usd" | "brl",
+  fiatRates: FiatRatesSuccessResponse | null,
+  isLoadingFiatRates: boolean,
+) {
+  if (isLoadingFiatRates) {
+    return "Loading";
+  }
+
+  if (!fiatRates) {
+    return "Unavailable";
+  }
+
+  if (currency === "brl" && !fiatRates.rates.brl) {
+    return "BRL unavailable";
+  }
+
+  const rate = fiatRates.rates[currency];
+
+  if (!rate) {
+    return "Unavailable";
+  }
+
+  return formatFiatLabel(currency, rate);
+}
+
+function renderFiatSummary(
+  ethValue: string,
+  fiatRates: FiatRatesSuccessResponse | null,
+) {
+  if (!fiatRates) {
+    return "Fiat rates unavailable.";
+  }
+
+  const usdRate = fiatRates.rates.usd;
+  const brlRate = fiatRates.rates.brl;
+  const summary = [];
+
+  if (usdRate) {
+    summary.push(formatFiatLabel("usd", multiplyDecimalStrings(ethValue, usdRate, 2)));
+  }
+
+  if (brlRate) {
+    summary.push(formatFiatLabel("brl", multiplyDecimalStrings(ethValue, brlRate, 2)));
+  } else {
+    summary.push("BRL unavailable at the moment");
+  }
+
+  return summary.join(" • ");
+}
+
+function formatFiatLabel(currency: "usd" | "brl", value: string) {
+  const formattedValue = formatDecimalForDisplay(value, 2);
+
+  return currency === "usd"
+    ? `$${formattedValue}`
+    : `R$ ${formattedValue}`;
+}
+
+function formatTimestamp(value: string | null) {
+  if (!value) {
+    return "unknown time";
+  }
+
+  return new Date(value).toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }
 
 function shorten(value: string) {

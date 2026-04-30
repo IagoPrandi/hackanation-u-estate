@@ -101,8 +101,45 @@ export type SavedPropertyRecord = {
   documentsHash: string;
 };
 
+export type FiatCurrency = "usd" | "brl" | "eur" | "jpy";
+
+export type FiatWarningCode =
+  | "BRL_ROUTE_UNAVAILABLE"
+  | "USING_LAST_KNOWN_RATES";
+
+export type FiatRatesSnapshot = {
+  provider: "okx";
+  base: "ETH";
+  routes: Partial<Record<FiatCurrency, string>>;
+  rates: Partial<Record<FiatCurrency, string>>;
+  unavailable: FiatCurrency[];
+  optionalRates: {
+    eur: string | null;
+    jpy: string | null;
+  };
+  updatedAt: string | null;
+};
+
+export type FiatRatesSuccessResponse = FiatRatesSnapshot & {
+  ok: true;
+  cached: boolean;
+  warning?: FiatWarningCode;
+};
+
+export type FiatRatesErrorResponse = {
+  ok: false;
+  code: "FIAT_RATES_UNAVAILABLE";
+  message: string;
+  provider: "okx";
+};
+
+export type FiatRatesResponse =
+  | FiatRatesSuccessResponse
+  | FiatRatesErrorResponse;
+
 export type OffchainDatabase = {
   properties: SavedPropertyRecord[];
+  fiatRatesCache: FiatRatesSnapshot;
 };
 
 export function normalizeCoordinate(value: string) {

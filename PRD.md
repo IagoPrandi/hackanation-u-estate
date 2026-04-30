@@ -2257,27 +2257,27 @@ P0
 
 #### Checklist
 
-- [ ] Criar API `/api/fiat-rates`.
-- [ ] Consultar OKX server-side.
-- [ ] Suportar BRL e USD.
-- [ ] Implementar timeout.
-- [ ] Implementar cache de 60 segundos.
-- [ ] Implementar fallback de último valor válido.
-- [ ] Implementar erro padronizado.
-- [ ] Armazenar cache no lowdb.
-- [ ] Usar string decimal para rates.
-- [ ] Usar decimal seguro para cálculos.
-- [ ] Exibir valor da casa em BRL e USD.
-- [ ] Exibir preço da oferta em BRL e USD.
-- [ ] Exibir valor por unidade em BRL e USD.
-- [ ] Exibir aviso quando estiver usando fallback/cache.
+- [x] Criar API `/api/fiat-rates`.
+- [x] Consultar OKX server-side.
+- [x] Suportar BRL e USD.
+- [x] Implementar timeout.
+- [x] Implementar cache de 60 segundos.
+- [x] Implementar fallback de último valor válido.
+- [x] Implementar erro padronizado.
+- [x] Armazenar cache no lowdb.
+- [x] Usar string decimal para rates.
+- [x] Usar decimal seguro para cálculos.
+- [x] Exibir valor da casa em BRL e USD.
+- [x] Exibir preço da oferta em BRL e USD.
+- [x] Exibir valor por unidade em BRL e USD.
+- [x] Exibir aviso quando estiver usando fallback/cache.
 
 #### Critério de aceite
 
-- [ ] UI mostra valores em ETH e USD, e BRL quando a rota estiver disponível.
-- [ ] API funciona com cache.
-- [ ] API lida com falha da OKX.
-- [ ] Testes P0 de cotação passam.
+- [x] UI mostra valores em ETH e USD, e BRL quando a rota estiver disponível.
+- [x] API funciona com cache.
+- [x] API lida com falha da OKX.
+- [x] Testes P0 de cotação passam.
 
 #### Prioridade
 
