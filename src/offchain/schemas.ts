@@ -1,4 +1,4 @@
-import { isAddress } from "viem";
+import { isAddress, isHash } from "viem";
 import { z } from "zod";
 import { parseDecimalToUnits } from "@/lib/safe-decimal";
 
@@ -70,9 +70,24 @@ export const propertyIntakeSchema = z.object({
     .max(10, "No more than 10 mock documents are allowed."),
 });
 
+export const propertyOnchainRegistrationInputSchema = z.object({
+  localPropertyId: z.uuid(),
+  propertyId: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Property id must be a positive integer string."),
+  txHash: z
+    .string()
+    .trim()
+    .refine((value) => isHash(value), "Transaction hash must be a valid hash."),
+});
+
 export type PropertyDraftInput = z.infer<typeof propertyIntakeSchema>;
 export type MockDocumentType = z.infer<typeof mockDocumentTypeSchema>;
 export type MockDocumentInput = z.infer<typeof mockDocumentInputSchema>;
+export type PropertyOnchainRegistrationInput = z.infer<
+  typeof propertyOnchainRegistrationInputSchema
+>;
 
 export type PropertyAddressV1 = {
   street: string;
@@ -145,6 +160,12 @@ export type PropertyDraftPreview = {
 export type SavedPropertyRecord = PropertyDraftPreview & {
   createdAt: string;
   documents: StoredMockDocument[];
+  onchainRegistration?: {
+    propertyId: string;
+    txHash: string;
+    status: "PendingMockVerification";
+    registeredAt: string;
+  };
 };
 
 export type FiatCurrency = "usd" | "brl" | "eur" | "jpy";

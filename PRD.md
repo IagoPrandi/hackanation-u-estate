@@ -2326,38 +2326,38 @@ P0
 
 #### Checklist
 
-- [ ] Implementar `PropertyRegistry`.
-- [ ] Implementar `PropertyRecord`.
-- [ ] Implementar `UsufructPosition`.
-- [ ] Implementar `nextPropertyId`.
-- [ ] Implementar `propertyExists`.
-- [ ] Implementar `propertiesByOwner`.
-- [ ] Implementar `participants`.
-- [ ] Implementar `registerProperty`.
-- [ ] Validar `marketValueWei`.
-- [ ] Validar `linkedValueBps`.
-- [ ] Validar `metadataHash`.
-- [ ] Validar `documentsHash`.
-- [ ] Validar `locationHash`.
-- [ ] Calcular `linkedValueUnits`.
-- [ ] Calcular `freeValueUnits`.
-- [ ] Salvar owner.
-- [ ] Salvar status `PendingMockVerification`.
-- [ ] Adicionar owner em `propertiesByOwner`.
-- [ ] Adicionar owner em `participants`.
-- [ ] Emitir `PropertyRegistered`.
-- [ ] Emitir `ParticipantAdded`.
-- [ ] Criar chamada no frontend.
-- [ ] Exibir `propertyId` criado.
+- [x] Implementar `PropertyRegistry`.
+- [x] Implementar `PropertyRecord`.
+- [x] Implementar `UsufructPosition`.
+- [x] Implementar `nextPropertyId`.
+- [x] Implementar `propertyExists`.
+- [x] Implementar `propertiesByOwner`.
+- [x] Implementar `participants`.
+- [x] Implementar `registerProperty`.
+- [x] Validar `marketValueWei`.
+- [x] Validar `linkedValueBps`.
+- [x] Validar `metadataHash`.
+- [x] Validar `documentsHash`.
+- [x] Validar `locationHash`.
+- [x] Calcular `linkedValueUnits`.
+- [x] Calcular `freeValueUnits`.
+- [x] Salvar owner.
+- [x] Salvar status `PendingMockVerification`.
+- [x] Adicionar owner em `propertiesByOwner`.
+- [x] Adicionar owner em `participants`.
+- [x] Emitir `PropertyRegistered`.
+- [x] Emitir `ParticipantAdded`.
+- [x] Criar chamada no frontend.
+- [x] Exibir `propertyId` criado.
 
 #### Critério de aceite
 
-- [ ] Pessoa A registra imóvel on-chain.
-- [ ] Contrato armazena valor de mercado e hashes.
-- [ ] Contrato calcula 20% vinculado e 80% livre no exemplo-base.
-- [ ] `propertyExists[propertyId] == true`.
-- [ ] Status inicial é `PendingMockVerification`.
-- [ ] Dashboard mostra imóvel registrado.
+- [x] Pessoa A registra imóvel on-chain.
+- [x] Contrato armazena valor de mercado e hashes.
+- [x] Contrato calcula 20% vinculado e 80% livre no exemplo-base.
+- [x] `propertyExists[propertyId] == true`.
+- [x] Status inicial é `PendingMockVerification`.
+- [x] Dashboard mostra imóvel registrado.
 
 #### Prioridade
 

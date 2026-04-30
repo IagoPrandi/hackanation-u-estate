@@ -4,7 +4,11 @@ import { mkdir, rm } from "node:fs/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildPropertyDraftPreview } from "@/offchain/property-draft";
 import { resetDbForTests } from "@/offchain/db";
-import { createPropertyDraft, listPropertyDrafts } from "@/offchain/repository";
+import {
+  createPropertyDraft,
+  listPropertyDrafts,
+  saveOnchainPropertyRegistration,
+} from "@/offchain/repository";
 import { hashStableJson } from "@/offchain/hash";
 import type { PropertyDraftInput } from "@/offchain/schemas";
 
@@ -92,6 +96,28 @@ describe("property drafts", () => {
     const drafts = await listPropertyDrafts();
     expect(drafts).toHaveLength(1);
     expect(drafts[0].localPropertyId).toBe(record.localPropertyId);
+  });
+
+  it("persists the on-chain property id after registration confirmation", async () => {
+    const record = await createPropertyDraft(createInput());
+
+    const updatedRecord = await saveOnchainPropertyRegistration({
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      txHash:
+        "0x1111111111111111111111111111111111111111111111111111111111111111",
+    });
+
+    expect(updatedRecord.onchainRegistration).toMatchObject({
+      propertyId: "1",
+      txHash:
+        "0x1111111111111111111111111111111111111111111111111111111111111111",
+      status: "PendingMockVerification",
+    });
+    expect(updatedRecord.onchainRegistration?.registeredAt).toBeTruthy();
+
+    const drafts = await listPropertyDrafts();
+    expect(drafts[0].onchainRegistration?.propertyId).toBe("1");
   });
 });
 

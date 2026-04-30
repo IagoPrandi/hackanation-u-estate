@@ -7,9 +7,14 @@ import {
   useMemo,
   useState,
 } from "react";
+import { parseEventLogs, type Hex } from "viem";
 import { sepolia } from "wagmi/chains";
-import { useAccount } from "wagmi";
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { WalletPanel } from "@/components/wallet-panel";
+import {
+  propertyRegistryAbi,
+  propertyRegistryAddress,
+} from "@/lib/contracts/property-registry";
 import {
   divideDecimalStrings,
   formatDecimalForDisplay,
@@ -73,6 +78,7 @@ export function PropertyWorkbench({
   initialProperties,
 }: PropertyWorkbenchProps) {
   const { address, chainId, isConnected } = useAccount();
+  const { writeContractAsync, isPending: isRegisteringOnchain } = useWriteContract();
   const [draftLocalId, setDraftLocalId] = useState(() => crypto.randomUUID());
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [listedUnits] = useState("300000");
@@ -88,6 +94,30 @@ export function PropertyWorkbench({
   );
   const [fiatErrorMessage, setFiatErrorMessage] = useState<string | null>(null);
   const [isLoadingFiatRates, setIsLoadingFiatRates] = useState(true);
+  const [registeringLocalPropertyId, setRegisteringLocalPropertyId] = useState<
+    string | null
+  >(null);
+  const [submittedRegistrationHash, setSubmittedRegistrationHash] =
+    useState<Hex | null>(null);
+  const [processedRegistrationHash, setProcessedRegistrationHash] =
+    useState<Hex | null>(null);
+  const [registrationErrorMessage, setRegistrationErrorMessage] = useState<
+    string | null
+  >(null);
+  const [registrationNotice, setRegistrationNotice] = useState<string | null>(
+    null,
+  );
+  const {
+    data: registrationReceipt,
+    error: registrationReceiptError,
+    isLoading: isConfirmingRegistration,
+  } = useWaitForTransactionReceipt({
+    chainId: sepolia.id,
+    hash: submittedRegistrationHash ?? undefined,
+    query: {
+      enabled: Boolean(submittedRegistrationHash),
+    },
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -132,6 +162,95 @@ export function PropertyWorkbench({
 
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (
+      !registrationReceipt ||
+      !registeringLocalPropertyId ||
+      processedRegistrationHash === registrationReceipt.transactionHash
+    ) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        setProcessedRegistrationHash(registrationReceipt.transactionHash);
+
+        const [propertyRegisteredLog] = parseEventLogs({
+          abi: propertyRegistryAbi,
+          eventName: "PropertyRegistered",
+          logs: registrationReceipt.logs,
+          strict: true,
+        });
+
+        if (!propertyRegisteredLog) {
+          throw new Error(
+            "Transaction confirmed, but PropertyRegistered event was not found.",
+          );
+        }
+
+        const response = await fetch("/api/properties", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            localPropertyId: registeringLocalPropertyId,
+            propertyId: propertyRegisteredLog.args.propertyId.toString(),
+            txHash: registrationReceipt.transactionHash,
+          }),
+        });
+
+        const payload = (await response.json()) as
+          | { record: SavedPropertyRecord }
+          | { error: string };
+
+        if (!response.ok || !("record" in payload)) {
+          throw new Error(
+            "error" in payload
+              ? payload.error
+              : "Could not persist the registered property locally.",
+          );
+        }
+
+        setProperties((current) =>
+          current.map((property) =>
+            property.localPropertyId === payload.record.localPropertyId
+              ? payload.record
+              : property,
+          ),
+        );
+        setLastSaved((current) =>
+          current?.localPropertyId === payload.record.localPropertyId
+            ? payload.record
+            : current,
+        );
+        setRegistrationNotice(
+          `Property #${propertyRegisteredLog.args.propertyId.toString()} registered on-chain.`,
+        );
+        setRegistrationErrorMessage(null);
+      } catch (error) {
+        setRegistrationErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "On-chain registration persistence failed.",
+        );
+        setRegistrationNotice(null);
+      } finally {
+        setRegisteringLocalPropertyId(null);
+      }
+    })();
+  }, [
+    processedRegistrationHash,
+    registeringLocalPropertyId,
+    registrationReceipt,
+  ]);
+
+  const registeredPropertiesCount = properties.filter(
+    (property) => property.onchainRegistration,
+  ).length;
+  const activeRegistrationErrorMessage =
+    registrationReceiptError?.message ?? registrationErrorMessage;
 
   const marketValuePreview = useMemo(() => {
     try {
@@ -294,19 +413,87 @@ export function PropertyWorkbench({
     }
   };
 
+  const handleRegisterOnchain = async (property: SavedPropertyRecord) => {
+    if (!address || !isConnected) {
+      setRegistrationErrorMessage(
+        "Connect a wallet before registering the property on-chain.",
+      );
+      return;
+    }
+
+    if (chainId !== sepolia.id) {
+      setRegistrationErrorMessage("Switch the wallet to Sepolia first.");
+      return;
+    }
+
+    if (!propertyRegistryAddress) {
+      setRegistrationErrorMessage(
+        "NEXT_PUBLIC_PROPERTY_REGISTRY_ADDRESS is not configured.",
+      );
+      return;
+    }
+
+    if (property.ownerWallet.toLowerCase() !== address.toLowerCase()) {
+      setRegistrationErrorMessage(
+        "Only the draft owner wallet can register this property on-chain.",
+      );
+      return;
+    }
+
+    if (property.onchainRegistration) {
+      setRegistrationErrorMessage(
+        "This property draft is already linked to an on-chain property.",
+      );
+      return;
+    }
+
+    setRegistrationErrorMessage(null);
+    setRegistrationNotice(null);
+    setRegisteringLocalPropertyId(property.localPropertyId);
+
+    try {
+      const txHash = await writeContractAsync({
+        address: propertyRegistryAddress,
+        abi: propertyRegistryAbi,
+        functionName: "registerProperty",
+        args: [
+          BigInt(property.marketValueWei),
+          property.linkedValueBps,
+          property.metadataHash as Hex,
+          property.documentsHash as Hex,
+          property.locationHash as Hex,
+        ],
+        chainId: sepolia.id,
+      });
+
+      setSubmittedRegistrationHash(txHash);
+      setProcessedRegistrationHash(null);
+      setRegistrationNotice(
+        `Transaction submitted: ${shortenHash(txHash)}. Waiting for confirmation.`,
+      );
+    } catch (error) {
+      setRegisteringLocalPropertyId(null);
+      setRegistrationErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not submit the on-chain registration transaction.",
+      );
+    }
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <section className="glass-panel overflow-hidden rounded-[2rem]">
         <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:px-10 lg:py-10">
           <div className="space-y-6">
             <div className="space-y-3">
-              <p className="soft-label">Milestone 0.3</p>
+              <p className="soft-label">Milestone 0.4</p>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
-                Off-chain intake with mock documents and deterministic preview.
+                Register the saved property on-chain from the local draft.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                The form now captures house data, mock document metadata, and
-                normalized hashes before the record is sent to the local server-side store.
+                The flow now keeps deterministic off-chain hashes, then sends
+                market value and hash references to `PropertyRegistry` on Sepolia.
               </p>
             </div>
 
@@ -326,12 +513,16 @@ export function PropertyWorkbench({
                 value={shortenId(draftLocalId)}
               />
               <StatCard
+                label="Registry contract"
+                value={propertyRegistryAddress ? "Configured" : "Missing env"}
+              />
+              <StatCard
                 label="USD per ETH"
                 value={getFiatRateLabel("usd", fiatRates, isLoadingFiatRates)}
               />
               <StatCard
-                label="Drafts saved"
-                value={properties.length.toString()}
+                label="On-chain registered"
+                value={registeredPropertiesCount.toString()}
               />
             </div>
 
@@ -345,6 +536,23 @@ export function PropertyWorkbench({
               <Notice tone="warning">
                 Cached fiat rates in use from {formatTimestamp(fiatRates.updatedAt)}.
               </Notice>
+            ) : null}
+
+            {!propertyRegistryAddress ? (
+              <Notice tone="warning">
+                Set `NEXT_PUBLIC_PROPERTY_REGISTRY_ADDRESS` to enable on-chain
+                registration from the dashboard.
+              </Notice>
+            ) : null}
+
+            {registrationNotice && !activeRegistrationErrorMessage ? (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900">
+                {registrationNotice}
+              </div>
+            ) : null}
+
+            {activeRegistrationErrorMessage ? (
+              <Notice tone="danger">{activeRegistrationErrorMessage}</Notice>
             ) : null}
           </div>
 
@@ -693,6 +901,23 @@ export function PropertyWorkbench({
                 <HashRow label="Property metadata hash" value={lastSaved.metadataHash} />
                 <HashRow label="Location metadata hash" value={lastSaved.locationHash} />
                 <HashRow label="Documents metadata hash" value={lastSaved.documentsHash} />
+                {lastSaved.onchainRegistration ? (
+                  <div className="rounded-3xl border border-line bg-white/75 p-4">
+                    <p className="soft-label">On-chain registration</p>
+                    <div className="mt-2 grid gap-3 text-sm text-muted md:grid-cols-2">
+                      <p>
+                        <span className="font-semibold text-foreground">Property id:</span>{" "}
+                        <span className="mono">
+                          {lastSaved.onchainRegistration.propertyId}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="font-semibold text-foreground">Status:</span>{" "}
+                        {lastSaved.onchainRegistration.status}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <p className="mt-6 text-sm leading-7 text-muted">
@@ -722,6 +947,26 @@ export function PropertyWorkbench({
                     property.marketValueWei,
                     8,
                   );
+                  const isDraftOwner =
+                    Boolean(address) &&
+                    property.ownerWallet.toLowerCase() === address?.toLowerCase();
+                  const isCurrentRegistration =
+                    registeringLocalPropertyId === property.localPropertyId;
+                  const registerButtonDisabled =
+                    !isConnected ||
+                    !isDraftOwner ||
+                    chainId !== sepolia.id ||
+                    !propertyRegistryAddress ||
+                    Boolean(property.onchainRegistration) ||
+                    isRegisteringOnchain ||
+                    isConfirmingRegistration;
+                  const registerButtonLabel = property.onchainRegistration
+                    ? "Registered on-chain"
+                    : isCurrentRegistration && isRegisteringOnchain
+                      ? "Submitting transaction..."
+                      : isCurrentRegistration && isConfirmingRegistration
+                        ? "Waiting for confirmation..."
+                        : "Register on-chain";
 
                   return (
                     <article
@@ -783,6 +1028,68 @@ export function PropertyWorkbench({
                             <span className="mono">{document.filename}</span>
                           </p>
                         ))}
+                      </div>
+
+                      <div className="mt-4 rounded-3xl border border-line bg-white/80 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="soft-label">On-chain registration</p>
+                            <p className="mt-2 text-sm text-muted">
+                              Register the saved hashes and market value in `PropertyRegistry`.
+                            </p>
+                          </div>
+                          {property.onchainRegistration ? (
+                            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                              {property.onchainRegistration.status}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {property.onchainRegistration ? (
+                          <div className="mt-4 grid gap-3 text-sm text-muted md:grid-cols-2">
+                            <div>
+                              <p className="soft-label">Property id</p>
+                              <p className="mono mt-1 text-foreground">
+                                {property.onchainRegistration.propertyId}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="soft-label">Registration tx</p>
+                              <p className="mono mt-1 break-all text-foreground">
+                                {property.onchainRegistration.txHash}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="mt-4 text-sm leading-7 text-muted">
+                            Not registered yet. The owner wallet must be connected on Sepolia.
+                          </p>
+                        )}
+
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleRegisterOnchain(property);
+                            }}
+                            disabled={registerButtonDisabled}
+                            className="inline-flex items-center justify-center rounded-full bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {registerButtonLabel}
+                          </button>
+
+                          {!isDraftOwner ? (
+                            <span className="text-sm text-muted">
+                              Connect the matching owner wallet to register.
+                            </span>
+                          ) : null}
+
+                          {chainId !== sepolia.id && isConnected ? (
+                            <span className="text-sm text-muted">
+                              Switch to Sepolia before sending the transaction.
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </article>
                   );
@@ -972,6 +1279,10 @@ function shorten(value: string) {
 
 function shortenId(value: string) {
   return `${value.slice(0, 8)}...${value.slice(-4)}`;
+}
+
+function shortenHash(value: string) {
+  return `${value.slice(0, 10)}...${value.slice(-6)}`;
 }
 
 const inputClassName =

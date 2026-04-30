@@ -53,6 +53,6 @@ cache/
 contracts/out/
 broadcast/
 
-.AGENTS.md
-.PRD.md
-.WORKLOG.md
+.AGENTS.md*
+.PRD.md*
+.WORKLOG.md*
