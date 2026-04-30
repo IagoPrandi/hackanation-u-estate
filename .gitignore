@@ -52,3 +52,7 @@ tools/
 cache/
 contracts/out/
 broadcast/
+
+.AGENTS.md
+.PRD.md
+.WORKLOG.md

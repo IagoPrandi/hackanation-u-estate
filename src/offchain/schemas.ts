@@ -23,7 +23,23 @@ const marketValueSchema = z
     }
   }, "Market value must be a valid ETH amount.");
 
+export const mockDocumentTypeSchema = z.enum([
+  "mock_deed",
+  "mock_owner_id",
+  "mock_tax_record",
+]);
+
+export const mockDocumentInputSchema = z.object({
+  type: mockDocumentTypeSchema,
+  filename: z
+    .string()
+    .trim()
+    .min(1, "Mock document filename is required.")
+    .max(120, "Mock document filename must stay under 120 characters."),
+});
+
 export const propertyIntakeSchema = z.object({
+  localPropertyId: z.uuid().optional(),
   ownerWallet: z
     .string()
     .trim()
@@ -48,57 +64,87 @@ export const propertyIntakeSchema = z.object({
   postalCode: z.string().trim().min(1, "Postal code is required."),
   lat: coordinateSchema,
   lng: coordinateSchema,
+  documents: z
+    .array(mockDocumentInputSchema)
+    .min(1, "At least one mock document is required.")
+    .max(10, "No more than 10 mock documents are allowed."),
 });
 
 export type PropertyDraftInput = z.infer<typeof propertyIntakeSchema>;
+export type MockDocumentType = z.infer<typeof mockDocumentTypeSchema>;
+export type MockDocumentInput = z.infer<typeof mockDocumentInputSchema>;
 
-export type PropertyMetadataV1 = {
+export type PropertyAddressV1 = {
+  street: string;
+  number: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
+};
+
+export type PropertyLocationV1 = {
+  lat: string;
+  lng: string;
+};
+
+export type PropertyMetadataHashInputV1 = {
   version: "1.0";
+  propertyLocalId: string;
+  ownerWallet: string;
+  marketValueWei: string;
+  linkedValueBps: number;
+  address: PropertyAddressV1;
+};
+
+export type LocationMetadataHashInputV1 = {
+  version: "1.0";
+  propertyLocalId: string;
+  lat: string;
+  lng: string;
+};
+
+export type DocumentsHashMetadataV1 = {
+  version: "1.0";
+  propertyLocalId: string;
+  documents: Array<{
+    type: MockDocumentType;
+    filename: string;
+    mock: true;
+  }>;
+};
+
+export type StoredMockDocument = {
+  type: MockDocumentType;
+  filename: string;
+  mock: true;
+  uploadedAt: string;
+};
+
+export type PropertyDraftPreview = {
   localPropertyId: string;
   ownerWallet: string;
   marketValueWei: string;
   linkedValueBps: number;
   description?: string;
-  createdAt: string;
-};
-
-export type LocationMetadataV1 = {
-  version: "1.0";
-  localPropertyId: string;
-  address: {
-    street: string;
-    number: string;
-    city: string;
-    state: string;
-    country: string;
-    postalCode: string;
-  };
-  location: {
-    lat: string;
-    lng: string;
-  };
-};
-
-export type DocumentsMetadataV1 = {
-  version: "1.0";
-  localPropertyId: string;
-  documents: {
-    type: "mock_deed" | "mock_owner_id" | "mock_tax_record";
+  address: PropertyAddressV1;
+  location: PropertyLocationV1;
+  documents: Array<{
+    type: MockDocumentType;
     filename: string;
     mock: true;
-    uploadedAt: string;
-  }[];
-};
-
-export type SavedPropertyRecord = {
-  localPropertyId: string;
-  createdAt: string;
-  metadata: PropertyMetadataV1;
-  location: LocationMetadataV1;
-  documents: DocumentsMetadataV1;
+  }>;
+  metadataForHash: PropertyMetadataHashInputV1;
+  locationForHash: LocationMetadataHashInputV1;
+  documentsForHash: DocumentsHashMetadataV1;
   metadataHash: string;
   locationHash: string;
   documentsHash: string;
+};
+
+export type SavedPropertyRecord = PropertyDraftPreview & {
+  createdAt: string;
+  documents: StoredMockDocument[];
 };
 
 export type FiatCurrency = "usd" | "brl" | "eur" | "jpy";

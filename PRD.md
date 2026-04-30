@@ -2291,28 +2291,28 @@ P0
 
 #### Checklist
 
-- [ ] Criar formulário de tokenização.
-- [ ] Criar mock document upload.
-- [ ] Criar schema local de propriedade.
-- [ ] Salvar endereço no banco local via server-side.
-- [ ] Salvar localização no banco local via server-side.
-- [ ] Normalizar `lat` e `lng` como strings de 6 casas.
-- [ ] Salvar valor de mercado no banco local.
-- [ ] Salvar percentual vinculado ao usufruto.
-- [ ] Salvar documentos mockados no banco local.
-- [ ] Calcular `metadataHash`.
-- [ ] Calcular `documentsHash`.
-- [ ] Calcular `locationHash`.
-- [ ] Exibir preview dos dados antes do registro on-chain.
-- [ ] Exibir aviso de que documentos são mockados.
+- [x] Criar formulário de tokenização.
+- [x] Criar mock document upload.
+- [x] Criar schema local de propriedade.
+- [x] Salvar endereço no banco local via server-side.
+- [x] Salvar localização no banco local via server-side.
+- [x] Normalizar `lat` e `lng` como strings de 6 casas.
+- [x] Salvar valor de mercado no banco local.
+- [x] Salvar percentual vinculado ao usufruto.
+- [x] Salvar documentos mockados no banco local.
+- [x] Calcular `metadataHash`.
+- [x] Calcular `documentsHash`.
+- [x] Calcular `locationHash`.
+- [x] Exibir preview dos dados antes do registro on-chain.
+- [x] Exibir aviso de que documentos são mockados.
 
 #### Critério de aceite
 
-- [ ] Pessoa A preenche dados da casa.
-- [ ] Pessoa A define percentual vinculado ao usufruto.
-- [ ] Pessoa A faz upload mockado de documentos.
-- [ ] Dados são salvos localmente via API/server action.
-- [ ] Hashes são gerados de forma determinística.
+- [x] Pessoa A preenche dados da casa.
+- [x] Pessoa A define percentual vinculado ao usufruto.
+- [x] Pessoa A faz upload mockado de documentos.
+- [x] Dados são salvos localmente via API/server action.
+- [x] Hashes são gerados de forma determinística.
 
 #### Prioridade
 

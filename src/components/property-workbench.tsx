@@ -18,10 +18,14 @@ import {
   scaleBpsToPercent,
   weiToEthDecimalString,
 } from "@/lib/safe-decimal";
+import { buildPropertyDraftPreview } from "@/offchain/property-draft";
 import type {
   FiatRatesResponse,
   FiatRatesSuccessResponse,
+  MockDocumentInput,
+  MockDocumentType,
   PropertyDraftInput,
+  PropertyDraftPreview,
   SavedPropertyRecord,
 } from "@/offchain/schemas";
 
@@ -29,7 +33,7 @@ type PropertyWorkbenchProps = {
   initialProperties: SavedPropertyRecord[];
 };
 
-type FormState = Omit<PropertyDraftInput, "ownerWallet">;
+type FormState = Omit<PropertyDraftInput, "ownerWallet" | "localPropertyId">;
 
 type PricingPreview = {
   marketValueEth: string;
@@ -40,6 +44,16 @@ type PricingPreview = {
 };
 
 const TOTAL_VALUE_UNITS = "1000000";
+const initialDocuments: MockDocumentInput[] = [
+  {
+    type: "mock_deed",
+    filename: "mock_matricula.pdf",
+  },
+  {
+    type: "mock_owner_id",
+    filename: "mock_owner_id.pdf",
+  },
+];
 const initialFormState: FormState = {
   marketValueEth: "10",
   linkedValueBps: 2000,
@@ -52,14 +66,16 @@ const initialFormState: FormState = {
   postalCode: "01414-001",
   lat: "-23.561414",
   lng: "-46.656632",
+  documents: initialDocuments,
 };
 
 export function PropertyWorkbench({
   initialProperties,
 }: PropertyWorkbenchProps) {
   const { address, chainId, isConnected } = useAccount();
+  const [draftLocalId, setDraftLocalId] = useState(() => crypto.randomUUID());
   const [formState, setFormState] = useState<FormState>(initialFormState);
-  const [listedUnits, setListedUnits] = useState("300000");
+  const [listedUnits] = useState("300000");
   const [properties, setProperties] =
     useState<SavedPropertyRecord[]>(initialProperties);
   const [lastSaved, setLastSaved] = useState<SavedPropertyRecord | null>(
@@ -171,11 +187,65 @@ export function PropertyWorkbench({
     }
   }, [formState.marketValueEth, listedUnits]);
 
+  const intakePreview = useMemo<PropertyDraftPreview | null>(() => {
+    if (!address || !isConnected) {
+      return null;
+    }
+
+    try {
+      return buildPropertyDraftPreview(
+        {
+          localPropertyId: draftLocalId,
+          ownerWallet: address,
+          ...formState,
+        },
+        {
+          localPropertyId: draftLocalId,
+        },
+      );
+    } catch {
+      return null;
+    }
+  }, [address, draftLocalId, formState, isConnected]);
+
   const updateField = <Key extends keyof FormState>(
     field: Key,
     value: FormState[Key],
   ) => {
     setFormState((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateDocument = <Key extends keyof MockDocumentInput>(
+    index: number,
+    field: Key,
+    value: MockDocumentInput[Key],
+  ) => {
+    setFormState((current) => ({
+      ...current,
+      documents: current.documents.map((document, documentIndex) =>
+        documentIndex === index ? { ...document, [field]: value } : document,
+      ),
+    }));
+  };
+
+  const addDocument = () => {
+    setFormState((current) => ({
+      ...current,
+      documents: [
+        ...current.documents,
+        {
+          type: "mock_tax_record",
+          filename: "",
+        },
+      ],
+    }));
+  };
+
+  const removeDocument = (index: number) => {
+    setFormState((current) => ({
+      ...current,
+      documents: current.documents.filter((_, documentIndex) => documentIndex !== index),
+    }));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -196,8 +266,9 @@ export function PropertyWorkbench({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...formState,
+          localPropertyId: draftLocalId,
           ownerWallet: address,
+          ...formState,
         }),
       });
 
@@ -213,6 +284,7 @@ export function PropertyWorkbench({
 
       setProperties((current) => [payload.record, ...current]);
       setLastSaved(payload.record);
+      setDraftLocalId(crypto.randomUUID());
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Unexpected save failure.",
@@ -228,14 +300,13 @@ export function PropertyWorkbench({
         <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:px-10 lg:py-10">
           <div className="space-y-6">
             <div className="space-y-3">
-              <p className="soft-label">Milestone 0.2</p>
+              <p className="soft-label">Milestone 0.3</p>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
-                Fiat pricing through OKX, cached server-side for the MVP flow.
+                Off-chain intake with mock documents and deterministic preview.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                The frontend consumes a local pricing route, while ETH settlement
-                stays untouched. USD is primary, BRL is runtime-validated, and
-                cached fallback remains visible to the operator.
+                The form now captures house data, mock document metadata, and
+                normalized hashes before the record is sent to the local server-side store.
               </p>
             </div>
 
@@ -251,12 +322,12 @@ export function PropertyWorkbench({
                 }
               />
               <StatCard
-                label="USD per ETH"
-                value={getFiatRateLabel("usd", fiatRates, isLoadingFiatRates)}
+                label="Draft local id"
+                value={shortenId(draftLocalId)}
               />
               <StatCard
-                label="BRL per ETH"
-                value={getFiatRateLabel("brl", fiatRates, isLoadingFiatRates)}
+                label="USD per ETH"
+                value={getFiatRateLabel("usd", fiatRates, isLoadingFiatRates)}
               />
               <StatCard
                 label="Drafts saved"
@@ -275,26 +346,22 @@ export function PropertyWorkbench({
                 Cached fiat rates in use from {formatTimestamp(fiatRates.updatedAt)}.
               </Notice>
             ) : null}
-
-            {fiatRates?.warning === "BRL_ROUTE_UNAVAILABLE" ? (
-              <Notice tone="warning">BRL unavailable at the moment.</Notice>
-            ) : null}
           </div>
 
           <WalletPanel />
         </div>
       </section>
 
-      <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+      <section className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr]">
         <form
           onSubmit={handleSubmit}
           className="glass-panel rounded-[1.75rem] p-6 sm:p-8"
         >
           <div className="mb-8 flex items-center justify-between gap-4">
             <div>
-              <p className="soft-label">Server-side intake</p>
+              <p className="soft-label">Tokenize my house</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em]">
-                Save an off-chain property draft
+                Save the off-chain property draft
               </h2>
             </div>
             <div className="rounded-full border border-line bg-white/70 px-4 py-2 text-sm font-medium text-muted">
@@ -315,7 +382,7 @@ export function PropertyWorkbench({
               />
             </Field>
 
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-2">
               <Field label="Market value (ETH)">
                 <input
                   value={formState.marketValueEth}
@@ -336,15 +403,6 @@ export function PropertyWorkbench({
                       Number(event.target.value || "0"),
                     )
                   }
-                  className={inputClassName}
-                  inputMode="numeric"
-                />
-              </Field>
-
-              <Field label="Listed free value units">
-                <input
-                  value={listedUnits}
-                  onChange={(event) => setListedUnits(event.target.value)}
                   className={inputClassName}
                   inputMode="numeric"
                 />
@@ -422,15 +480,80 @@ export function PropertyWorkbench({
                 />
               </Field>
             </div>
+
+            <section className="rounded-3xl border border-dashed border-line bg-white/55 p-5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="soft-label">Mock document upload</p>
+                  <h3 className="mt-2 text-lg font-semibold text-foreground">
+                    Attach mocked ownership evidence
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={addDocument}
+                  className="rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-foreground transition hover:border-foreground/30"
+                >
+                  Add mock document
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                {formState.documents.map((document, index) => (
+                  <div
+                    key={`${document.type}-${index}`}
+                    className="grid gap-4 rounded-3xl border border-line bg-white/80 p-4 md:grid-cols-[0.9fr_1.1fr_auto]"
+                  >
+                    <Field label="Mock document type">
+                      <select
+                        value={document.type}
+                        onChange={(event) =>
+                          updateDocument(
+                            index,
+                            "type",
+                            event.target.value as MockDocumentType,
+                          )
+                        }
+                        className={inputClassName}
+                      >
+                        <option value="mock_deed">Mock deed</option>
+                        <option value="mock_owner_id">Mock owner id</option>
+                        <option value="mock_tax_record">Mock tax record</option>
+                      </select>
+                    </Field>
+
+                    <Field label="Mock filename">
+                      <input
+                        value={document.filename}
+                        onChange={(event) =>
+                          updateDocument(index, "filename", event.target.value)
+                        }
+                        className={inputClassName}
+                        placeholder="mock_document.pdf"
+                      />
+                    </Field>
+
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => removeDocument(index)}
+                        disabled={formState.documents.length === 1}
+                        className="rounded-full border border-danger/20 bg-danger/5 px-4 py-3 text-sm font-semibold text-danger disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
 
           <div className="mt-8 flex flex-col gap-4 border-t border-line pt-6">
-            <div className="rounded-3xl border border-dashed border-line bg-white/55 p-4 text-sm leading-7 text-muted">
-              Mock documents are attached automatically for this milestone:
-              <span className="mono block text-foreground">
-                mock-deed.pdf, mock-owner-id.pdf, mock-tax-record.pdf
-              </span>
-            </div>
+            <Notice tone="warning">
+              Mock documents are metadata-only. No real deed verification or binary
+              file hashing happens in milestone `0.3`.
+            </Notice>
 
             <div className="rounded-3xl border border-line bg-white/75 p-4 text-sm text-muted">
               <p className="soft-label">Input previews</p>
@@ -463,6 +586,60 @@ export function PropertyWorkbench({
         </form>
 
         <div className="flex flex-col gap-6">
+          <section className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
+            <p className="soft-label">Pre-save deterministic preview</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em]">
+              Data that will be referenced on-chain
+            </h2>
+
+            {intakePreview ? (
+              <div className="mt-6 space-y-4">
+                <article className="rounded-3xl border border-line bg-white/75 p-4">
+                  <p className="soft-label">Draft local id</p>
+                  <p className="mono mt-2 break-all text-sm leading-6 text-foreground">
+                    {intakePreview.localPropertyId}
+                  </p>
+                  <div className="mt-4 grid gap-3 text-sm text-muted md:grid-cols-2">
+                    <p>
+                      <span className="font-semibold text-foreground">Address:</span>{" "}
+                      {intakePreview.address.street}, {intakePreview.address.number},{" "}
+                      {intakePreview.address.city}, {intakePreview.address.state}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-foreground">Location:</span>{" "}
+                      <span className="mono">
+                        {intakePreview.location.lat}, {intakePreview.location.lng}
+                      </span>
+                    </p>
+                  </div>
+                </article>
+
+                <HashRow label="Property metadata hash" value={intakePreview.metadataHash} />
+                <HashRow label="Location metadata hash" value={intakePreview.locationHash} />
+                <HashRow label="Documents metadata hash" value={intakePreview.documentsHash} />
+
+                <article className="rounded-3xl border border-line bg-white/75 p-4">
+                  <p className="soft-label">Mock documents to be saved</p>
+                  <div className="mt-3 space-y-2 text-sm text-muted">
+                    {intakePreview.documents.map((document, index) => (
+                      <p key={`${document.type}-${index}`}>
+                        <span className="font-semibold text-foreground">
+                          {formatDocumentType(document.type)}:
+                        </span>{" "}
+                        <span className="mono">{document.filename}</span>
+                      </p>
+                    ))}
+                  </div>
+                </article>
+              </div>
+            ) : (
+              <p className="mt-6 text-sm leading-7 text-muted">
+                Connect a wallet and keep all intake fields valid to preview the
+                deterministic hash payloads before any server-side write.
+              </p>
+            )}
+          </section>
+
           <section className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -508,19 +685,19 @@ export function PropertyWorkbench({
           <section className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
             <p className="soft-label">Last saved hashes</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em]">
-              Deterministic output preview
+              Server-side persisted output
             </h2>
 
             {lastSaved ? (
               <div className="mt-6 space-y-4">
-                <HashRow label="Property metadata" value={lastSaved.metadataHash} />
-                <HashRow label="Location metadata" value={lastSaved.locationHash} />
-                <HashRow label="Documents metadata" value={lastSaved.documentsHash} />
+                <HashRow label="Property metadata hash" value={lastSaved.metadataHash} />
+                <HashRow label="Location metadata hash" value={lastSaved.locationHash} />
+                <HashRow label="Documents metadata hash" value={lastSaved.documentsHash} />
               </div>
             ) : (
               <p className="mt-6 text-sm leading-7 text-muted">
-                Save the first property draft to inspect deterministic hashes and
-                the normalized coordinate payload.
+                Save the first property draft to compare the pre-save preview with
+                the persisted server-side record.
               </p>
             )}
           </section>
@@ -542,7 +719,7 @@ export function PropertyWorkbench({
               {properties.length ? (
                 properties.map((property) => {
                   const marketValueEth = weiToEthDecimalString(
-                    property.metadata.marketValueWei,
+                    property.marketValueWei,
                     8,
                   );
 
@@ -554,16 +731,15 @@ export function PropertyWorkbench({
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <p className="text-base font-semibold text-foreground">
-                            {property.metadata.description || "Unnamed property"}
+                            {property.description || "Unnamed property"}
                           </p>
                           <p className="mt-1 text-sm text-muted">
-                            {property.location.address.street},{" "}
-                            {property.location.address.number},{" "}
-                            {property.location.address.city}
+                            {property.address.street}, {property.address.number},{" "}
+                            {property.address.city}
                           </p>
                         </div>
                         <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-accent">
-                          {scaleBpsToPercent(property.metadata.linkedValueBps)} linked
+                          {scaleBpsToPercent(property.linkedValueBps)} linked
                         </span>
                       </div>
 
@@ -577,7 +753,7 @@ export function PropertyWorkbench({
                         <div>
                           <p className="soft-label">Owner wallet</p>
                           <p className="mono mt-1 break-all text-foreground">
-                            {property.metadata.ownerWallet}
+                            {property.ownerWallet}
                           </p>
                         </div>
                         <div>
@@ -592,10 +768,21 @@ export function PropertyWorkbench({
                         <div>
                           <p className="soft-label">Coordinates</p>
                           <p className="mono mt-1 text-foreground">
-                            {property.location.location.lat},{" "}
-                            {property.location.location.lng}
+                            {property.location.lat}, {property.location.lng}
                           </p>
                         </div>
+                      </div>
+
+                      <div className="mt-4 space-y-2 text-sm text-muted">
+                        <p className="soft-label">Stored mock documents</p>
+                        {property.documents.map((document, index) => (
+                          <p key={`${property.localPropertyId}-${index}`}>
+                            <span className="font-semibold text-foreground">
+                              {formatDocumentType(document.type)}:
+                            </span>{" "}
+                            <span className="mono">{document.filename}</span>
+                          </p>
+                        ))}
                       </div>
                     </article>
                   );
@@ -696,6 +883,19 @@ function formatEthLabel(value: string) {
   return `${formatDecimalForDisplay(value, 6)} ETH`;
 }
 
+function formatDocumentType(value: MockDocumentType) {
+  switch (value) {
+    case "mock_deed":
+      return "Mock deed";
+    case "mock_owner_id":
+      return "Mock owner id";
+    case "mock_tax_record":
+      return "Mock tax record";
+    default:
+      return value;
+  }
+}
+
 function getFiatRateLabel(
   currency: "usd" | "brl",
   fiatRates: FiatRatesSuccessResponse | null,
@@ -768,6 +968,10 @@ function formatTimestamp(value: string | null) {
 
 function shorten(value: string) {
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+function shortenId(value: string) {
+  return `${value.slice(0, 8)}...${value.slice(-4)}`;
 }
 
 const inputClassName =
