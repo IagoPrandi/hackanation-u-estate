@@ -4,6 +4,9 @@ pragma solidity ^0.8.30;
 import {ProtocolTypes} from "./libraries/ProtocolTypes.sol";
 
 contract PropertyRegistry {
+    bytes32 public constant MOCK_VERIFIER_ROLE =
+        keccak256("MOCK_VERIFIER_ROLE");
+
     uint256 public nextPropertyId = 1;
     address public owner;
     address public usufructRightNft;
@@ -16,19 +19,36 @@ contract PropertyRegistry {
     mapping(address => uint256[]) private propertiesByOwner;
     mapping(uint256 => address[]) private participants;
     mapping(uint256 => mapping(address => bool)) public isParticipantForProperty;
+    mapping(bytes32 => mapping(address => bool)) private roles;
 
     error Unauthorized();
     error ZeroAddress();
+    error PropertyNotFound();
+    error InvalidPropertyStatus();
     error InvalidMarketValueWei();
     error InvalidLinkedValueBps();
     error InvalidMetadataHash();
     error InvalidDocumentsHash();
     error InvalidLocationHash();
 
+    event OwnershipTransferred(
+        address indexed previousOwner,
+        address indexed newOwner
+    );
     event ExternalContractsConfigured(
         address usufructRightNft,
         address propertyValueTokenFactory,
         address primaryValueSale
+    );
+    event RoleGranted(
+        bytes32 indexed role,
+        address indexed account,
+        address indexed sender
+    );
+    event RoleRevoked(
+        bytes32 indexed role,
+        address indexed account,
+        address indexed sender
     );
     event PropertyRegistered(
         uint256 indexed propertyId,
@@ -43,9 +63,20 @@ contract PropertyRegistry {
         ProtocolTypes.PropertyStatus status
     );
     event ParticipantAdded(uint256 indexed propertyId, address indexed participant);
+    event PropertyMockVerified(
+        uint256 indexed propertyId,
+        address indexed verifier,
+        address indexed owner
+    );
+    event PropertyStatusUpdated(
+        uint256 indexed propertyId,
+        ProtocolTypes.PropertyStatus previousStatus,
+        ProtocolTypes.PropertyStatus newStatus
+    );
 
     constructor() {
         owner = msg.sender;
+        emit OwnershipTransferred(address(0), msg.sender);
     }
 
     modifier onlyOwner() {
@@ -54,6 +85,41 @@ contract PropertyRegistry {
         }
 
         _;
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) {
+            revert ZeroAddress();
+        }
+
+        address previousOwner = owner;
+        owner = newOwner;
+
+        emit OwnershipTransferred(previousOwner, newOwner);
+    }
+
+    function grantRole(bytes32 role, address account) external onlyOwner {
+        if (account == address(0)) {
+            revert ZeroAddress();
+        }
+
+        _grantRole(role, account);
+    }
+
+    function revokeRole(bytes32 role, address account) external onlyOwner {
+        if (!roles[role][account]) {
+            return;
+        }
+
+        roles[role][account] = false;
+        emit RoleRevoked(role, account, msg.sender);
+    }
+
+    function hasRole(
+        bytes32 role,
+        address account
+    ) public view returns (bool) {
+        return roles[role][account];
     }
 
     function configureExternalContracts(
@@ -150,6 +216,37 @@ contract PropertyRegistry {
         );
     }
 
+    function mockVerifyProperty(uint256 propertyId) external {
+        if (!propertyExists[propertyId]) {
+            revert PropertyNotFound();
+        }
+
+        ProtocolTypes.PropertyRecord storage property = properties[propertyId];
+        if (
+            property.status !=
+            ProtocolTypes.PropertyStatus.PendingMockVerification
+        ) {
+            revert InvalidPropertyStatus();
+        }
+
+        if (
+            msg.sender != property.owner &&
+            !hasRole(MOCK_VERIFIER_ROLE, msg.sender)
+        ) {
+            revert Unauthorized();
+        }
+
+        ProtocolTypes.PropertyStatus previousStatus = property.status;
+        property.status = ProtocolTypes.PropertyStatus.MockVerified;
+
+        emit PropertyMockVerified(propertyId, msg.sender, property.owner);
+        emit PropertyStatusUpdated(
+            propertyId,
+            previousStatus,
+            ProtocolTypes.PropertyStatus.MockVerified
+        );
+    }
+
     function getPropertiesByOwner(
         address ownerAddress
     ) external view returns (uint256[] memory) {
@@ -179,5 +276,14 @@ contract PropertyRegistry {
         participants[propertyId].push(participant);
 
         emit ParticipantAdded(propertyId, participant);
+    }
+
+    function _grantRole(bytes32 role, address account) internal {
+        if (roles[role][account]) {
+            return;
+        }
+
+        roles[role][account] = true;
+        emit RoleGranted(role, account, msg.sender);
     }
 }

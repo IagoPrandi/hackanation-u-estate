@@ -2371,27 +2371,27 @@ P0
 
 #### Checklist
 
-- [ ] Implementar `Ownable`.
-- [ ] Implementar `AccessControl`.
-- [ ] Implementar `MOCK_VERIFIER_ROLE`.
-- [ ] Implementar `mockVerifyProperty`.
-- [ ] Validar existência do imóvel.
-- [ ] Validar status `PendingMockVerification`.
-- [ ] Permitir mock verification pelo owner do imóvel.
-- [ ] Permitir mock verification por `MOCK_VERIFIER_ROLE`.
-- [ ] Reverter mock verification por conta não autorizada.
-- [ ] Atualizar status para `MockVerified`.
-- [ ] Emitir `PropertyMockVerified`.
-- [ ] Emitir `PropertyStatusUpdated`.
-- [ ] Criar botão “Aprovar documentos mock”.
-- [ ] Exibir status no dashboard.
+- [x] Implementar `Ownable`.
+- [x] Implementar `AccessControl`.
+- [x] Implementar `MOCK_VERIFIER_ROLE`.
+- [x] Implementar `mockVerifyProperty`.
+- [x] Validar existência do imóvel.
+- [x] Validar status `PendingMockVerification`.
+- [x] Permitir mock verification pelo owner do imóvel.
+- [x] Permitir mock verification por `MOCK_VERIFIER_ROLE`.
+- [x] Reverter mock verification por conta não autorizada.
+- [x] Atualizar status para `MockVerified`.
+- [x] Emitir `PropertyMockVerified`.
+- [x] Emitir `PropertyStatusUpdated`.
+- [x] Criar botão “Aprovar documentos mock”.
+- [x] Exibir status no dashboard.
 
 #### Critério de aceite
 
-- [ ] Pessoa A registra imóvel.
-- [ ] Pessoa A clica em “Aprovar documentos mock”.
-- [ ] Status muda para `MockVerified`.
-- [ ] Tokenização fica liberada.
+- [x] Pessoa A registra imóvel.
+- [x] Pessoa A clica em “Aprovar documentos mock”.
+- [x] Status muda para `MockVerified`.
+- [x] Tokenização fica liberada.
 
 #### Prioridade
 

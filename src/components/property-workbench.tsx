@@ -79,6 +79,8 @@ export function PropertyWorkbench({
 }: PropertyWorkbenchProps) {
   const { address, chainId, isConnected } = useAccount();
   const { writeContractAsync, isPending: isRegisteringOnchain } = useWriteContract();
+  const { writeContractAsync: writeMockVerificationAsync, isPending: isSubmittingMockVerification } =
+    useWriteContract();
   const [draftLocalId, setDraftLocalId] = useState(() => crypto.randomUUID());
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [listedUnits] = useState("300000");
@@ -107,6 +109,19 @@ export function PropertyWorkbench({
   const [registrationNotice, setRegistrationNotice] = useState<string | null>(
     null,
   );
+  const [verifyingLocalPropertyId, setVerifyingLocalPropertyId] = useState<
+    string | null
+  >(null);
+  const [submittedVerificationHash, setSubmittedVerificationHash] =
+    useState<Hex | null>(null);
+  const [processedVerificationHash, setProcessedVerificationHash] =
+    useState<Hex | null>(null);
+  const [verificationErrorMessage, setVerificationErrorMessage] = useState<
+    string | null
+  >(null);
+  const [verificationNotice, setVerificationNotice] = useState<string | null>(
+    null,
+  );
   const {
     data: registrationReceipt,
     error: registrationReceiptError,
@@ -116,6 +131,17 @@ export function PropertyWorkbench({
     hash: submittedRegistrationHash ?? undefined,
     query: {
       enabled: Boolean(submittedRegistrationHash),
+    },
+  });
+  const {
+    data: verificationReceipt,
+    error: verificationReceiptError,
+    isLoading: isConfirmingVerification,
+  } = useWaitForTransactionReceipt({
+    chainId: sepolia.id,
+    hash: submittedVerificationHash ?? undefined,
+    query: {
+      enabled: Boolean(submittedVerificationHash),
     },
   });
 
@@ -195,6 +221,7 @@ export function PropertyWorkbench({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            kind: "registration",
             localPropertyId: registeringLocalPropertyId,
             propertyId: propertyRegisteredLog.args.propertyId.toString(),
             txHash: registrationReceipt.transactionHash,
@@ -246,11 +273,100 @@ export function PropertyWorkbench({
     registrationReceipt,
   ]);
 
+  useEffect(() => {
+    if (
+      !verificationReceipt ||
+      !verifyingLocalPropertyId ||
+      processedVerificationHash === verificationReceipt.transactionHash
+    ) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        setProcessedVerificationHash(verificationReceipt.transactionHash);
+
+        const [propertyMockVerifiedLog] = parseEventLogs({
+          abi: propertyRegistryAbi,
+          eventName: "PropertyMockVerified",
+          logs: verificationReceipt.logs,
+          strict: true,
+        });
+
+        if (!propertyMockVerifiedLog) {
+          throw new Error(
+            "Transaction confirmed, but PropertyMockVerified event was not found.",
+          );
+        }
+
+        const response = await fetch("/api/properties", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "mockVerification",
+            localPropertyId: verifyingLocalPropertyId,
+            propertyId: propertyMockVerifiedLog.args.propertyId.toString(),
+            txHash: verificationReceipt.transactionHash,
+          }),
+        });
+
+        const payload = (await response.json()) as
+          | { record: SavedPropertyRecord }
+          | { error: string };
+
+        if (!response.ok || !("record" in payload)) {
+          throw new Error(
+            "error" in payload
+              ? payload.error
+              : "Could not persist the mock verification locally.",
+          );
+        }
+
+        setProperties((current) =>
+          current.map((property) =>
+            property.localPropertyId === payload.record.localPropertyId
+              ? payload.record
+              : property,
+          ),
+        );
+        setLastSaved((current) =>
+          current?.localPropertyId === payload.record.localPropertyId
+            ? payload.record
+            : current,
+        );
+        setVerificationNotice(
+          `Property #${propertyMockVerifiedLog.args.propertyId.toString()} mock-verified on-chain.`,
+        );
+        setVerificationErrorMessage(null);
+      } catch (error) {
+        setVerificationErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Mock verification persistence failed.",
+        );
+        setVerificationNotice(null);
+      } finally {
+        setVerifyingLocalPropertyId(null);
+      }
+    })();
+  }, [
+    processedVerificationHash,
+    verificationReceipt,
+    verifyingLocalPropertyId,
+  ]);
+
   const registeredPropertiesCount = properties.filter(
     (property) => property.onchainRegistration,
   ).length;
+  const mockVerifiedPropertiesCount = properties.filter(
+    (property) => property.onchainRegistration?.status === "MockVerified",
+  ).length;
   const activeRegistrationErrorMessage =
     registrationReceiptError?.message ?? registrationErrorMessage;
+  const activeVerificationErrorMessage =
+    verificationReceiptError?.message ?? verificationErrorMessage;
 
   const marketValuePreview = useMemo(() => {
     try {
@@ -481,19 +597,86 @@ export function PropertyWorkbench({
     }
   };
 
+  const handleMockVerification = async (property: SavedPropertyRecord) => {
+    if (!address || !isConnected) {
+      setVerificationErrorMessage(
+        "Connect a wallet before approving mock documents.",
+      );
+      return;
+    }
+
+    if (chainId !== sepolia.id) {
+      setVerificationErrorMessage("Switch the wallet to Sepolia first.");
+      return;
+    }
+
+    if (!propertyRegistryAddress) {
+      setVerificationErrorMessage(
+        "NEXT_PUBLIC_PROPERTY_REGISTRY_ADDRESS is not configured.",
+      );
+      return;
+    }
+
+    if (!property.onchainRegistration) {
+      setVerificationErrorMessage(
+        "Register the property on-chain before mock verification.",
+      );
+      return;
+    }
+
+    if (property.ownerWallet.toLowerCase() !== address.toLowerCase()) {
+      setVerificationErrorMessage(
+        "Only the draft owner wallet can approve mock documents from this dashboard.",
+      );
+      return;
+    }
+
+    if (property.onchainRegistration.status !== "PendingMockVerification") {
+      setVerificationErrorMessage("This property is already mock-verified.");
+      return;
+    }
+
+    setVerificationErrorMessage(null);
+    setVerificationNotice(null);
+    setVerifyingLocalPropertyId(property.localPropertyId);
+
+    try {
+      const txHash = await writeMockVerificationAsync({
+        address: propertyRegistryAddress,
+        abi: propertyRegistryAbi,
+        functionName: "mockVerifyProperty",
+        args: [BigInt(property.onchainRegistration.propertyId)],
+        chainId: sepolia.id,
+      });
+
+      setSubmittedVerificationHash(txHash);
+      setProcessedVerificationHash(null);
+      setVerificationNotice(
+        `Verification tx submitted: ${shortenHash(txHash)}. Waiting for confirmation.`,
+      );
+    } catch (error) {
+      setVerifyingLocalPropertyId(null);
+      setVerificationErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not submit the mock verification transaction.",
+      );
+    }
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <section className="glass-panel overflow-hidden rounded-[2rem]">
         <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:px-10 lg:py-10">
           <div className="space-y-6">
             <div className="space-y-3">
-              <p className="soft-label">Milestone 0.4</p>
+              <p className="soft-label">Milestone 0.5</p>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
-                Register the saved property on-chain from the local draft.
+                Approve mock documents after the property is registered.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                The flow now keeps deterministic off-chain hashes, then sends
-                market value and hash references to `PropertyRegistry` on Sepolia.
+                The flow now carries property drafts from registration into mock
+                verification, with owner or verifier-role approval on Sepolia.
               </p>
             </div>
 
@@ -521,8 +704,8 @@ export function PropertyWorkbench({
                 value={getFiatRateLabel("usd", fiatRates, isLoadingFiatRates)}
               />
               <StatCard
-                label="On-chain registered"
-                value={registeredPropertiesCount.toString()}
+                label="Mock verified"
+                value={`${mockVerifiedPropertiesCount}/${registeredPropertiesCount}`}
               />
             </div>
 
@@ -553,6 +736,16 @@ export function PropertyWorkbench({
 
             {activeRegistrationErrorMessage ? (
               <Notice tone="danger">{activeRegistrationErrorMessage}</Notice>
+            ) : null}
+
+            {verificationNotice && !activeVerificationErrorMessage ? (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900">
+                {verificationNotice}
+              </div>
+            ) : null}
+
+            {activeVerificationErrorMessage ? (
+              <Notice tone="danger">{activeVerificationErrorMessage}</Notice>
             ) : null}
           </div>
 
@@ -915,6 +1108,16 @@ export function PropertyWorkbench({
                         <span className="font-semibold text-foreground">Status:</span>{" "}
                         {lastSaved.onchainRegistration.status}
                       </p>
+                      {lastSaved.onchainRegistration.verificationTxHash ? (
+                        <p className="md:col-span-2">
+                          <span className="font-semibold text-foreground">
+                            Verification tx:
+                          </span>{" "}
+                          <span className="mono break-all">
+                            {lastSaved.onchainRegistration.verificationTxHash}
+                          </span>
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}
@@ -952,6 +1155,8 @@ export function PropertyWorkbench({
                     property.ownerWallet.toLowerCase() === address?.toLowerCase();
                   const isCurrentRegistration =
                     registeringLocalPropertyId === property.localPropertyId;
+                  const isCurrentVerification =
+                    verifyingLocalPropertyId === property.localPropertyId;
                   const registerButtonDisabled =
                     !isConnected ||
                     !isDraftOwner ||
@@ -964,9 +1169,26 @@ export function PropertyWorkbench({
                     ? "Registered on-chain"
                     : isCurrentRegistration && isRegisteringOnchain
                       ? "Submitting transaction..."
-                      : isCurrentRegistration && isConfirmingRegistration
+                    : isCurrentRegistration && isConfirmingRegistration
                         ? "Waiting for confirmation..."
                         : "Register on-chain";
+                  const verifyButtonDisabled =
+                    !isConnected ||
+                    !isDraftOwner ||
+                    chainId !== sepolia.id ||
+                    !propertyRegistryAddress ||
+                    !property.onchainRegistration ||
+                    property.onchainRegistration.status !== "PendingMockVerification" ||
+                    isSubmittingMockVerification ||
+                    isConfirmingVerification;
+                  const verifyButtonLabel =
+                    property.onchainRegistration?.status === "MockVerified"
+                      ? "Mock verified"
+                      : isCurrentVerification && isSubmittingMockVerification
+                        ? "Submitting verification..."
+                        : isCurrentVerification && isConfirmingVerification
+                          ? "Waiting for verification..."
+                          : "Approve mock documents";
 
                   return (
                     <article
@@ -1059,6 +1281,14 @@ export function PropertyWorkbench({
                                 {property.onchainRegistration.txHash}
                               </p>
                             </div>
+                            {property.onchainRegistration.verificationTxHash ? (
+                              <div className="md:col-span-2">
+                                <p className="soft-label">Verification tx</p>
+                                <p className="mono mt-1 break-all text-foreground">
+                                  {property.onchainRegistration.verificationTxHash}
+                                </p>
+                              </div>
+                            ) : null}
                           </div>
                         ) : (
                           <p className="mt-4 text-sm leading-7 text-muted">
@@ -1089,6 +1319,48 @@ export function PropertyWorkbench({
                               Switch to Sepolia before sending the transaction.
                             </span>
                           ) : null}
+                        </div>
+
+                        <div className="mt-4 rounded-3xl border border-dashed border-line bg-white/70 p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="soft-label">Mock verification</p>
+                              <p className="mt-2 text-sm text-muted">
+                                Owner wallet can approve mock documents here. Verifier-role wallets
+                                stay allowed on-chain, even if not exposed in this dashboard.
+                              </p>
+                            </div>
+                            {property.onchainRegistration ? (
+                              <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-accent">
+                                {property.onchainRegistration.status}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleMockVerification(property);
+                              }}
+                              disabled={verifyButtonDisabled}
+                              className="inline-flex items-center justify-center rounded-full border border-accent/20 bg-accent/10 px-4 py-3 text-sm font-semibold text-accent transition hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {verifyButtonLabel}
+                            </button>
+
+                            {!property.onchainRegistration ? (
+                              <span className="text-sm text-muted">
+                                Register first. Then approve mock documents.
+                              </span>
+                            ) : null}
+
+                            {property.onchainRegistration?.status === "MockVerified" ? (
+                              <span className="text-sm text-muted">
+                                Mock verification already completed for this property.
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </article>

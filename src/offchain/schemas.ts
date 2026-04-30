@@ -71,6 +71,7 @@ export const propertyIntakeSchema = z.object({
 });
 
 export const propertyOnchainRegistrationInputSchema = z.object({
+  kind: z.literal("registration"),
   localPropertyId: z.uuid(),
   propertyId: z
     .string()
@@ -82,12 +83,34 @@ export const propertyOnchainRegistrationInputSchema = z.object({
     .refine((value) => isHash(value), "Transaction hash must be a valid hash."),
 });
 
+export const propertyMockVerificationInputSchema = z.object({
+  kind: z.literal("mockVerification"),
+  localPropertyId: z.uuid(),
+  propertyId: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Property id must be a positive integer string."),
+  txHash: z
+    .string()
+    .trim()
+    .refine((value) => isHash(value), "Transaction hash must be a valid hash."),
+});
+
+export const propertyOnchainSyncSchema = z.discriminatedUnion("kind", [
+  propertyOnchainRegistrationInputSchema,
+  propertyMockVerificationInputSchema,
+]);
+
 export type PropertyDraftInput = z.infer<typeof propertyIntakeSchema>;
 export type MockDocumentType = z.infer<typeof mockDocumentTypeSchema>;
 export type MockDocumentInput = z.infer<typeof mockDocumentInputSchema>;
 export type PropertyOnchainRegistrationInput = z.infer<
   typeof propertyOnchainRegistrationInputSchema
 >;
+export type PropertyMockVerificationInput = z.infer<
+  typeof propertyMockVerificationInputSchema
+>;
+export type PropertyOnchainSyncInput = z.infer<typeof propertyOnchainSyncSchema>;
 
 export type PropertyAddressV1 = {
   street: string;
@@ -163,8 +186,10 @@ export type SavedPropertyRecord = PropertyDraftPreview & {
   onchainRegistration?: {
     propertyId: string;
     txHash: string;
-    status: "PendingMockVerification";
+    status: "PendingMockVerification" | "MockVerified";
     registeredAt: string;
+    verificationTxHash?: string;
+    verifiedAt?: string;
   };
 };
 

@@ -7,6 +7,7 @@ import { resetDbForTests } from "@/offchain/db";
 import {
   createPropertyDraft,
   listPropertyDrafts,
+  savePropertyMockVerification,
   saveOnchainPropertyRegistration,
 } from "@/offchain/repository";
 import { hashStableJson } from "@/offchain/hash";
@@ -102,6 +103,7 @@ describe("property drafts", () => {
     const record = await createPropertyDraft(createInput());
 
     const updatedRecord = await saveOnchainPropertyRegistration({
+      kind: "registration",
       localPropertyId: record.localPropertyId,
       propertyId: "1",
       txHash:
@@ -118,6 +120,34 @@ describe("property drafts", () => {
 
     const drafts = await listPropertyDrafts();
     expect(drafts[0].onchainRegistration?.propertyId).toBe("1");
+  });
+
+  it("persists mock verification after on-chain approval", async () => {
+    const record = await createPropertyDraft(createInput());
+
+    await saveOnchainPropertyRegistration({
+      kind: "registration",
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      txHash:
+        "0x1111111111111111111111111111111111111111111111111111111111111111",
+    });
+
+    const updatedRecord = await savePropertyMockVerification({
+      kind: "mockVerification",
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      txHash:
+        "0x2222222222222222222222222222222222222222222222222222222222222222",
+    });
+
+    expect(updatedRecord.onchainRegistration).toMatchObject({
+      propertyId: "1",
+      status: "MockVerified",
+      verificationTxHash:
+        "0x2222222222222222222222222222222222222222222222222222222222222222",
+    });
+    expect(updatedRecord.onchainRegistration?.verifiedAt).toBeTruthy();
   });
 });
 

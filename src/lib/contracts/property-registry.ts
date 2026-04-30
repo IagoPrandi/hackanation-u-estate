@@ -33,6 +33,13 @@ export const propertyRegistryAbi = [
     outputs: [{ name: "propertyId", type: "uint256" }],
   },
   {
+    type: "function",
+    stateMutability: "nonpayable",
+    name: "mockVerifyProperty",
+    inputs: [{ name: "propertyId", type: "uint256" }],
+    outputs: [],
+  },
+  {
     type: "event",
     anonymous: false,
     name: "PropertyRegistered",
@@ -47,6 +54,16 @@ export const propertyRegistryAbi = [
       { indexed: false, name: "documentsHash", type: "bytes32" },
       { indexed: false, name: "locationHash", type: "bytes32" },
       { indexed: false, name: "status", type: "uint8" },
+    ],
+  },
+  {
+    type: "event",
+    anonymous: false,
+    name: "PropertyMockVerified",
+    inputs: [
+      { indexed: true, name: "propertyId", type: "uint256" },
+      { indexed: true, name: "verifier", type: "address" },
+      { indexed: true, name: "owner", type: "address" },
     ],
   },
 ] as const;

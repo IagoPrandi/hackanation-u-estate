@@ -214,4 +214,129 @@ contract PropertyRegistryTest {
         vm.expectRevert(abi.encodeWithSelector(PropertyRegistry.ZeroAddress.selector));
         registry.configureExternalContracts(address(0), BOB, address(0xCAFE));
     }
+
+    function testOwnerCanMockVerifyOwnProperty() external {
+        vm.prank(ALICE);
+        uint256 propertyId = registry.registerProperty(
+            10 ether,
+            2_000,
+            METADATA_HASH,
+            DOCUMENTS_HASH,
+            LOCATION_HASH
+        );
+
+        vm.prank(ALICE);
+        registry.mockVerifyProperty(propertyId);
+
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ProtocolTypes.PropertyStatus status
+        ) = registry.properties(propertyId);
+
+        require(
+            uint8(status) == uint8(ProtocolTypes.PropertyStatus.MockVerified),
+            "mock verify status mismatch"
+        );
+    }
+
+    function testMockVerifierRoleCanVerifyProperty() external {
+        vm.prank(ALICE);
+        uint256 propertyId = registry.registerProperty(
+            10 ether,
+            2_000,
+            METADATA_HASH,
+            DOCUMENTS_HASH,
+            LOCATION_HASH
+        );
+
+        registry.grantRole(registry.MOCK_VERIFIER_ROLE(), BOB);
+
+        vm.prank(BOB);
+        registry.mockVerifyProperty(propertyId);
+
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ProtocolTypes.PropertyStatus status
+        ) = registry.properties(propertyId);
+
+        require(
+            uint8(status) == uint8(ProtocolTypes.PropertyStatus.MockVerified),
+            "role verify status mismatch"
+        );
+        require(
+            registry.hasRole(registry.MOCK_VERIFIER_ROLE(), BOB),
+            "mock verifier role missing"
+        );
+    }
+
+    function testMockVerifyRejectsUnauthorizedCaller() external {
+        vm.prank(ALICE);
+        uint256 propertyId = registry.registerProperty(
+            10 ether,
+            2_000,
+            METADATA_HASH,
+            DOCUMENTS_HASH,
+            LOCATION_HASH
+        );
+
+        vm.prank(BOB);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyRegistry.Unauthorized.selector)
+        );
+        registry.mockVerifyProperty(propertyId);
+    }
+
+    function testMockVerifyRejectsMissingProperty() external {
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyRegistry.PropertyNotFound.selector)
+        );
+        registry.mockVerifyProperty(999);
+    }
+
+    function testMockVerifyRejectsWrongStatus() external {
+        vm.prank(ALICE);
+        uint256 propertyId = registry.registerProperty(
+            10 ether,
+            2_000,
+            METADATA_HASH,
+            DOCUMENTS_HASH,
+            LOCATION_HASH
+        );
+
+        vm.prank(ALICE);
+        registry.mockVerifyProperty(propertyId);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyRegistry.InvalidPropertyStatus.selector)
+        );
+        registry.mockVerifyProperty(propertyId);
+    }
+
+    function testGrantRoleOnlyOwner() external {
+        bytes32 mockVerifierRole = registry.MOCK_VERIFIER_ROLE();
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyRegistry.Unauthorized.selector)
+        );
+        registry.grantRole(mockVerifierRole, BOB);
+    }
 }

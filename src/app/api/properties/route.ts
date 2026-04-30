@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import {
   createPropertyDraft,
   listPropertyDrafts,
+  savePropertyMockVerification,
   saveOnchainPropertyRegistration,
 } from "@/offchain/repository";
 import {
   propertyIntakeSchema,
-  propertyOnchainRegistrationInputSchema,
+  propertyOnchainSyncSchema,
 } from "@/offchain/schemas";
 
 export const dynamic = "force-dynamic";
@@ -46,19 +47,22 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const payload = await request.json();
-    const parsedPayload = propertyOnchainRegistrationInputSchema.safeParse(payload);
+    const parsedPayload = propertyOnchainSyncSchema.safeParse(payload);
 
     if (!parsedPayload.success) {
       return NextResponse.json(
         {
-          error: "Invalid on-chain registration payload.",
+          error: "Invalid on-chain sync payload.",
           details: parsedPayload.error.flatten(),
         },
         { status: 400 },
       );
     }
 
-    const record = await saveOnchainPropertyRegistration(parsedPayload.data);
+    const record =
+      parsedPayload.data.kind === "registration"
+        ? await saveOnchainPropertyRegistration(parsedPayload.data)
+        : await savePropertyMockVerification(parsedPayload.data);
 
     return NextResponse.json({ record });
   } catch (error) {
@@ -67,7 +71,10 @@ export async function PATCH(request: Request) {
     const status =
       message === "Property draft not found."
         ? 404
-        : message === "Property draft already linked to an on-chain property."
+        : message === "Property draft already linked to an on-chain property." ||
+            message === "Property draft is already mock-verified." ||
+            message === "Property draft is not registered on-chain." ||
+            message === "On-chain property id does not match the saved draft."
           ? 409
           : 500;
 

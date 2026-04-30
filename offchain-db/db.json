@@ -1,5 +1,154 @@
 {
-  "properties": [],
+  "properties": [
+    {
+      "localPropertyId": "22222222-2222-4222-8222-222222222222",
+      "ownerWallet": "0x000000000000000000000000000000000000dEaD",
+      "marketValueWei": "10000000000000000000",
+      "linkedValueBps": 2000,
+      "description": "Milestone 0.3 verification",
+      "address": {
+        "street": "Rua Exemplo",
+        "number": "123",
+        "city": "Sao Paulo",
+        "state": "SP",
+        "country": "BR",
+        "postalCode": "00000-000"
+      },
+      "location": {
+        "lat": "-23.550500",
+        "lng": "-46.633300"
+      },
+      "documents": [
+        {
+          "type": "mock_deed",
+          "filename": "mock_matricula.pdf",
+          "mock": true,
+          "uploadedAt": "2026-04-30T12:06:04.746Z"
+        },
+        {
+          "type": "mock_owner_id",
+          "filename": "mock_owner_id.pdf",
+          "mock": true,
+          "uploadedAt": "2026-04-30T12:06:04.746Z"
+        }
+      ],
+      "metadataForHash": {
+        "version": "1.0",
+        "propertyLocalId": "22222222-2222-4222-8222-222222222222",
+        "ownerWallet": "0x000000000000000000000000000000000000dEaD",
+        "marketValueWei": "10000000000000000000",
+        "linkedValueBps": 2000,
+        "address": {
+          "street": "Rua Exemplo",
+          "number": "123",
+          "city": "Sao Paulo",
+          "state": "SP",
+          "country": "BR",
+          "postalCode": "00000-000"
+        }
+      },
+      "locationForHash": {
+        "version": "1.0",
+        "propertyLocalId": "22222222-2222-4222-8222-222222222222",
+        "lat": "-23.550500",
+        "lng": "-46.633300"
+      },
+      "documentsForHash": {
+        "version": "1.0",
+        "propertyLocalId": "22222222-2222-4222-8222-222222222222",
+        "documents": [
+          {
+            "type": "mock_deed",
+            "filename": "mock_matricula.pdf",
+            "mock": true
+          },
+          {
+            "type": "mock_owner_id",
+            "filename": "mock_owner_id.pdf",
+            "mock": true
+          }
+        ]
+      },
+      "metadataHash": "0xb891d50ef7de798628cd7b5a6c5294a1117c12a6930d550b4e4821593e81db80",
+      "locationHash": "0xf71e613222d27458f47cb61af4eff7dfb80f4f909ac4440f5bc22394db9efaa2",
+      "documentsHash": "0x6e7d6888c5e71aba7fe10ee7ab586b48d5adeac27b10047e558d4f81f989c484",
+      "createdAt": "2026-04-30T12:06:04.746Z"
+    },
+    {
+      "localPropertyId": "11111111-1111-4111-8111-111111111111",
+      "ownerWallet": "0x000000000000000000000000000000000000dEaD",
+      "marketValueWei": "10000000000000000000",
+      "linkedValueBps": 2000,
+      "description": "Server-side saved preview check",
+      "address": {
+        "street": "Rua Exemplo",
+        "number": "123",
+        "city": "Sao Paulo",
+        "state": "SP",
+        "country": "BR",
+        "postalCode": "00000-000"
+      },
+      "location": {
+        "lat": "-23.550500",
+        "lng": "-46.633300"
+      },
+      "documents": [
+        {
+          "type": "mock_deed",
+          "filename": "mock_matricula.pdf",
+          "mock": true,
+          "uploadedAt": "2026-04-30T11:11:47.627Z"
+        },
+        {
+          "type": "mock_owner_id",
+          "filename": "mock_owner_id.pdf",
+          "mock": true,
+          "uploadedAt": "2026-04-30T11:11:47.627Z"
+        }
+      ],
+      "metadataForHash": {
+        "version": "1.0",
+        "propertyLocalId": "11111111-1111-4111-8111-111111111111",
+        "ownerWallet": "0x000000000000000000000000000000000000dEaD",
+        "marketValueWei": "10000000000000000000",
+        "linkedValueBps": 2000,
+        "address": {
+          "street": "Rua Exemplo",
+          "number": "123",
+          "city": "Sao Paulo",
+          "state": "SP",
+          "country": "BR",
+          "postalCode": "00000-000"
+        }
+      },
+      "locationForHash": {
+        "version": "1.0",
+        "propertyLocalId": "11111111-1111-4111-8111-111111111111",
+        "lat": "-23.550500",
+        "lng": "-46.633300"
+      },
+      "documentsForHash": {
+        "version": "1.0",
+        "propertyLocalId": "11111111-1111-4111-8111-111111111111",
+        "documents": [
+          {
+            "type": "mock_deed",
+            "filename": "mock_matricula.pdf",
+            "mock": true
+          },
+          {
+            "type": "mock_owner_id",
+            "filename": "mock_owner_id.pdf",
+            "mock": true
+          }
+        ]
+      },
+      "metadataHash": "0x233ff0605cd19567c35fe66b015d4f95830f0ad9c5d4b5a9bed7889371c03fe2",
+      "locationHash": "0x2f83a3b6d95a8ba388ebbc37660150253b79b237cbd0fabe0bb25669871e23ae",
+      "documentsHash": "0x65f2a91d81f59a5de593cd6f32fd83649178e857e08711a858a9939db627a505",
+      "createdAt": "2026-04-30T11:11:47.627Z"
+    }
+  ],
   "fiatRatesCache": {
     "provider": "okx",
     "base": "ETH",
@@ -8,14 +157,14 @@
       "brl": "ETH-USDC * USDC-BRL"
     },
     "rates": {
-      "usd": "2260.37",
-      "brl": "11306.37074"
+      "usd": "2264.6",
+      "brl": "11248.2682"
     },
     "unavailable": [],
     "optionalRates": {
       "eur": null,
       "jpy": null
     },
-    "updatedAt": "2026-04-30T10:56:45.925Z"
+    "updatedAt": "2026-04-30T20:39:55.502Z"
   }
 }

@@ -5,6 +5,7 @@ import { buildSavedPropertyRecord } from "@/offchain/property-draft";
 import type {
   FiatRatesSnapshot,
   PropertyDraftInput,
+  PropertyMockVerificationInput,
   PropertyOnchainRegistrationInput,
   SavedPropertyRecord,
 } from "@/offchain/schemas";
@@ -66,6 +67,39 @@ export async function saveOnchainPropertyRegistration(
     status: "PendingMockVerification",
     registeredAt: new Date().toISOString(),
   };
+
+  await db.write();
+
+  return property;
+}
+
+export async function savePropertyMockVerification(
+  input: PropertyMockVerificationInput,
+) {
+  const db = await getDb();
+  const property = db.data.properties.find(
+    (record) => record.localPropertyId === input.localPropertyId,
+  );
+
+  if (!property) {
+    throw new Error("Property draft not found.");
+  }
+
+  if (!property.onchainRegistration) {
+    throw new Error("Property draft is not registered on-chain.");
+  }
+
+  if (property.onchainRegistration.propertyId !== input.propertyId) {
+    throw new Error("On-chain property id does not match the saved draft.");
+  }
+
+  if (property.onchainRegistration.status === "MockVerified") {
+    throw new Error("Property draft is already mock-verified.");
+  }
+
+  property.onchainRegistration.status = "MockVerified";
+  property.onchainRegistration.verificationTxHash = input.txHash;
+  property.onchainRegistration.verifiedAt = new Date().toISOString();
 
   await db.write();
 
