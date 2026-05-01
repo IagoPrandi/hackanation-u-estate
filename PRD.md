@@ -2540,40 +2540,40 @@ P0
 
 #### Checklist
 
-- [ ] Implementar `buyPrimarySaleListing`.
-- [ ] Usar `nonReentrant`.
-- [ ] Validar `listingExists`.
-- [ ] Validar listing ativo.
-- [ ] Validar `msg.value == priceWei`.
-- [ ] Validar comprador diferente do seller.
-- [ ] Mudar listing para `Filled` antes de transferir ETH.
-- [ ] Atualizar `activeListingsCountByProperty`.
-- [ ] Atualizar `activeEscrowedAmountByProperty`.
-- [ ] Atualizar `totalFreeValueSoldByProperty`.
-- [ ] Atualizar status do imÃ³vel.
-- [ ] Transferir tokens livres de `address(this)` para comprador.
-- [ ] Transferir ETH para seller com `call`.
-- [ ] Reverter se `call` falhar.
-- [ ] Registrar comprador em `participants`.
-- [ ] Emitir `ListingStatusUpdated`.
-- [ ] Emitir `PrimarySalePurchased`.
-- [ ] Emitir `SellerPaid`.
-- [ ] Emitir `ParticipantAdded` se aplicÃ¡vel.
-- [ ] Atualizar dashboard.
-- [ ] Mostrar saldo do comprador.
-- [ ] Mostrar ETH recebido pela vendedora.
-- [ ] Bloquear compra duplicada.
+- [x] Implementar `buyPrimarySaleListing`.
+- [x] Usar `nonReentrant`.
+- [x] Validar `listingExists`.
+- [x] Validar listing ativo.
+- [x] Validar `msg.value == priceWei`.
+- [x] Validar comprador diferente do seller.
+- [x] Mudar listing para `Filled` antes de transferir ETH.
+- [x] Atualizar `activeListingsCountByProperty`.
+- [x] Atualizar `activeEscrowedAmountByProperty`.
+- [x] Atualizar `totalFreeValueSoldByProperty`.
+- [x] Atualizar status do imÃ³vel.
+- [x] Transferir tokens livres de `address(this)` para comprador.
+- [x] Transferir ETH para seller com `call`.
+- [x] Reverter se `call` falhar.
+- [x] Registrar comprador em `participants`.
+- [x] Emitir `ListingStatusUpdated`.
+- [x] Emitir `PrimarySalePurchased`.
+- [x] Emitir `SellerPaid`.
+- [x] Emitir `ParticipantAdded` se aplicÃ¡vel.
+- [x] Atualizar dashboard.
+- [x] Mostrar saldo do comprador.
+- [x] Mostrar ETH recebido pela vendedora.
+- [x] Bloquear compra duplicada.
 
 #### CritÃ©rio de aceite
 
-- [ ] Pessoa B compra 300.000 tokens por 3 ETH.
-- [ ] Pessoa A recebe 3 ETH na wallet.
-- [ ] Pessoa B recebe 300.000 tokens de Direito de Valor Livre.
-- [ ] Pessoa A continua com NFT de usufruto.
-- [ ] Pessoa A continua com 200.000 unidades vinculadas.
-- [ ] Dashboard mostra A com 70% econÃ´mico total e B com 30%.
-- [ ] Status volta para `Tokenized` se nÃ£o houver ofertas ativas.
-- [ ] Status vira `SoldOut` se todo valor livre foi vendido.
+- [x] Pessoa B compra 300.000 tokens por 3 ETH.
+- [x] Pessoa A recebe 3 ETH na wallet.
+- [x] Pessoa B recebe 300.000 tokens de Direito de Valor Livre.
+- [x] Pessoa A continua com NFT de usufruto.
+- [x] Pessoa A continua com 200.000 unidades vinculadas.
+- [x] Dashboard mostra A com 70% econÃ´mico total e B com 30%.
+- [x] Status volta para `Tokenized` se nÃ£o houver ofertas ativas.
+- [x] Status vira `SoldOut` se todo valor livre foi vendido.
 
 #### Prioridade
 

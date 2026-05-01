@@ -381,6 +381,25 @@ contract PropertyRegistry {
         emit PropertyStatusUpdated(propertyId, currentStatus, newStatus);
     }
 
+    function addParticipantFromSale(
+        uint256 propertyId,
+        address participant
+    ) external {
+        if (msg.sender != primaryValueSale) {
+            revert Unauthorized();
+        }
+
+        if (!propertyExists[propertyId]) {
+            revert PropertyNotFound();
+        }
+
+        if (participant == address(0)) {
+            revert ZeroAddress();
+        }
+
+        _addParticipant(propertyId, participant);
+    }
+
     function getPropertiesByOwner(
         address ownerAddress
     ) external view returns (uint256[] memory) {

@@ -153,11 +153,41 @@ export const propertyPrimarySaleListingInputSchema = z.object({
     .regex(/^[1-9]\d*$/, "Listing price must be a positive integer string."),
 });
 
+export const propertyPrimarySalePurchaseInputSchema = z.object({
+  kind: z.literal("primarySalePurchase"),
+  localPropertyId: z.uuid(),
+  propertyId: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Property id must be a positive integer string."),
+  listingId: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Listing id must be a positive integer string."),
+  txHash: z
+    .string()
+    .trim()
+    .refine((value) => isHash(value), "Transaction hash must be a valid hash."),
+  buyerWallet: z
+    .string()
+    .trim()
+    .refine((value) => isAddress(value), "Buyer wallet must be a valid address."),
+  amount: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Purchase amount must be a positive integer string."),
+  priceWei: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Purchase price must be a positive integer string."),
+});
+
 export const propertyOnchainSyncSchema = z.discriminatedUnion("kind", [
   propertyOnchainRegistrationInputSchema,
   propertyMockVerificationInputSchema,
   propertyTokenizationInputSchema,
   propertyPrimarySaleListingInputSchema,
+  propertyPrimarySalePurchaseInputSchema,
 ]);
 
 export type PropertyDraftInput = z.infer<typeof propertyIntakeSchema>;
@@ -174,6 +204,9 @@ export type PropertyTokenizationInput = z.infer<
 >;
 export type PropertyPrimarySaleListingInput = z.infer<
   typeof propertyPrimarySaleListingInputSchema
+>;
+export type PropertyPrimarySalePurchaseInput = z.infer<
+  typeof propertyPrimarySalePurchaseInputSchema
 >;
 export type PropertyOnchainSyncInput = z.infer<typeof propertyOnchainSyncSchema>;
 
@@ -269,13 +302,24 @@ export type SavedPropertyRecord = PropertyDraftPreview & {
     activeListingsCount?: string;
     activeEscrowedAmount?: string;
     totalFreeValueSold?: string;
+    sellerReceivedWei?: string;
+    buyerBalances?: Array<{
+      buyerWallet: string;
+      freeValueUnits: string;
+      totalPaidWei: string;
+      lastPurchaseTxHash: string;
+      acquiredAt: string;
+    }>;
     primarySaleListings?: Array<{
       listingId: string;
       amount: string;
       priceWei: string;
       txHash: string;
-      status: "Active";
+      status: "Active" | "Filled" | "Cancelled";
       listedAt: string;
+      buyerWallet?: string;
+      purchaseTxHash?: string;
+      purchasedAt?: string;
     }>;
   };
 };

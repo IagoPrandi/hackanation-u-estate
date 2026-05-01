@@ -5,6 +5,7 @@ import {
   savePropertyMockVerification,
   saveOnchainPropertyRegistration,
   savePropertyPrimarySaleListing,
+  savePropertyPrimarySalePurchase,
   savePropertyTokenization,
 } from "@/offchain/repository";
 import {
@@ -68,7 +69,9 @@ export async function PATCH(request: Request) {
           ? await savePropertyMockVerification(parsedPayload.data)
           : parsedPayload.data.kind === "tokenization"
             ? await savePropertyTokenization(parsedPayload.data)
-            : await savePropertyPrimarySaleListing(parsedPayload.data);
+            : parsedPayload.data.kind === "primarySaleListing"
+              ? await savePropertyPrimarySaleListing(parsedPayload.data)
+              : await savePropertyPrimarySalePurchase(parsedPayload.data);
 
     return NextResponse.json({ record });
   } catch (error) {
@@ -84,6 +87,9 @@ export async function PATCH(request: Request) {
             message === "Property draft must be mock-verified before tokenization." ||
             message === "Property draft must be tokenized before primary sale." ||
             message === "Primary sale listing already saved locally." ||
+            message === "Primary sale listing is not saved locally." ||
+            message === "Primary sale listing is not active locally." ||
+            message === "Primary sale purchase does not match the saved listing." ||
             message === "On-chain property id does not match the saved draft."
           ? 409
           : 500;

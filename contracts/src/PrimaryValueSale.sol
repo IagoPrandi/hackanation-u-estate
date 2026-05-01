@@ -7,6 +7,7 @@ import {ProtocolTypes} from "./libraries/ProtocolTypes.sol";
 
 contract PrimaryValueSale {
     address public immutable registry;
+    uint256 private reentrancyLock;
 
     uint256 public nextListingId = 1;
 
@@ -26,6 +27,12 @@ contract PrimaryValueSale {
     error InvalidAmount();
     error InsufficientBalance();
     error PriceZero();
+    error ListingNotFound();
+    error ListingNotActive();
+    error InvalidPaymentAmount();
+    error SellerCannotBuyOwnListing();
+    error EthTransferFailed();
+    error Reentrancy();
 
     event PrimarySaleListed(
         uint256 indexed listingId,
@@ -39,6 +46,24 @@ contract PrimaryValueSale {
         address indexed seller,
         uint256 amount
     );
+    event ListingStatusUpdated(
+        uint256 indexed listingId,
+        ProtocolTypes.SaleStatus previousStatus,
+        ProtocolTypes.SaleStatus newStatus
+    );
+    event PrimarySalePurchased(
+        uint256 indexed listingId,
+        uint256 indexed propertyId,
+        address indexed buyer,
+        address seller,
+        uint256 amount,
+        uint256 priceWei
+    );
+    event SellerPaid(
+        uint256 indexed listingId,
+        address indexed seller,
+        uint256 amountWei
+    );
 
     constructor(address registry_) {
         if (registry_ == address(0)) {
@@ -48,10 +73,20 @@ contract PrimaryValueSale {
         registry = registry_;
     }
 
+    modifier nonReentrant() {
+        if (reentrancyLock != 0) {
+            revert Reentrancy();
+        }
+
+        reentrancyLock = 1;
+        _;
+        reentrancyLock = 0;
+    }
+
     function createPrimarySaleListing(
         uint256 propertyId,
         uint256 amount
-    ) external returns (uint256 listingId) {
+    ) external nonReentrant returns (uint256 listingId) {
         PropertyRegistry registryContract = PropertyRegistry(registry);
 
         if (!registryContract.propertyExists(propertyId)) {
@@ -134,6 +169,101 @@ contract PrimaryValueSale {
             priceWei
         );
         emit TokensEscrowed(listingId, msg.sender, amount);
+    }
+
+    function buyPrimarySaleListing(
+        uint256 listingId
+    ) external payable nonReentrant {
+        if (!listingExists[listingId]) {
+            revert ListingNotFound();
+        }
+
+        ProtocolTypes.PrimarySaleListing storage listing = listings[listingId];
+        if (listing.status != ProtocolTypes.SaleStatus.Active) {
+            revert ListingNotActive();
+        }
+
+        if (msg.value != listing.priceWei) {
+            revert InvalidPaymentAmount();
+        }
+
+        if (msg.sender == listing.seller) {
+            revert SellerCannotBuyOwnListing();
+        }
+
+        PropertyRegistry registryContract = PropertyRegistry(registry);
+        if (!registryContract.propertyExists(listing.propertyId)) {
+            revert PropertyNotFound();
+        }
+
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            uint256 freeValueUnits,
+            ,
+            ,
+            ,
+            address valueTokenAddress,
+            ProtocolTypes.PropertyStatus propertyStatus
+        ) = registryContract.properties(listing.propertyId);
+
+        if (
+            propertyStatus != ProtocolTypes.PropertyStatus.ActiveSale &&
+            propertyStatus != ProtocolTypes.PropertyStatus.Tokenized
+        ) {
+            revert InvalidPropertyStatus();
+        }
+
+        ProtocolTypes.SaleStatus previousStatus = listing.status;
+        listing.status = ProtocolTypes.SaleStatus.Filled;
+
+        unchecked {
+            activeListingsCountByProperty[listing.propertyId] -= 1;
+            activeEscrowedAmountByProperty[listing.propertyId] -= listing.amount;
+        }
+        totalFreeValueSoldByProperty[listing.propertyId] += listing.amount;
+
+        ProtocolTypes.PropertyStatus nextPropertyStatus;
+        if (totalFreeValueSoldByProperty[listing.propertyId] == freeValueUnits) {
+            nextPropertyStatus = ProtocolTypes.PropertyStatus.SoldOut;
+        } else if (activeListingsCountByProperty[listing.propertyId] > 0) {
+            nextPropertyStatus = ProtocolTypes.PropertyStatus.ActiveSale;
+        } else {
+            nextPropertyStatus = ProtocolTypes.PropertyStatus.Tokenized;
+        }
+
+        registryContract.syncPropertySaleStatus(listing.propertyId, nextPropertyStatus);
+        registryContract.addParticipantFromSale(listing.propertyId, msg.sender);
+
+        emit ListingStatusUpdated(
+            listingId,
+            previousStatus,
+            ProtocolTypes.SaleStatus.Filled
+        );
+
+        PropertyValueToken(valueTokenAddress).operatorTransfer(
+            address(this),
+            msg.sender,
+            listing.amount
+        );
+
+        (bool ok, ) = listing.seller.call{value: listing.priceWei}("");
+        if (!ok) {
+            revert EthTransferFailed();
+        }
+
+        emit PrimarySalePurchased(
+            listingId,
+            listing.propertyId,
+            msg.sender,
+            listing.seller,
+            listing.amount,
+            listing.priceWei
+        );
+        emit SellerPaid(listingId, listing.seller, listing.priceWei);
     }
 
     function getListingIds() external view returns (uint256[] memory) {

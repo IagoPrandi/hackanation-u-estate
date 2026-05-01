@@ -6,6 +6,7 @@ import type {
   FiatRatesSnapshot,
   PropertyDraftInput,
   PropertyPrimarySaleListingInput,
+  PropertyPrimarySalePurchaseInput,
   PropertyMockVerificationInput,
   PropertyOnchainRegistrationInput,
   PropertyTokenizationInput,
@@ -206,6 +207,123 @@ export async function savePropertyPrimarySaleListing(
     },
     ...existingListings,
   ];
+
+  await db.write();
+
+  return property;
+}
+
+export async function savePropertyPrimarySalePurchase(
+  input: PropertyPrimarySalePurchaseInput,
+) {
+  const db = await getDb();
+  const property = db.data.properties.find(
+    (record) => record.localPropertyId === input.localPropertyId,
+  );
+
+  if (!property) {
+    throw new Error("Property draft not found.");
+  }
+
+  if (!property.onchainRegistration) {
+    throw new Error("Property draft is not registered on-chain.");
+  }
+
+  if (property.onchainRegistration.propertyId !== input.propertyId) {
+    throw new Error("On-chain property id does not match the saved draft.");
+  }
+
+  const listings = property.onchainRegistration.primarySaleListings;
+  if (!listings?.length) {
+    throw new Error("Primary sale listing is not saved locally.");
+  }
+
+  const listingIndex = listings.findIndex(
+    (listing) => listing.listingId === input.listingId,
+  );
+  if (listingIndex === -1) {
+    throw new Error("Primary sale listing is not saved locally.");
+  }
+
+  const existingListing = listings[listingIndex];
+  if (existingListing.status !== "Active") {
+    throw new Error("Primary sale listing is not active locally.");
+  }
+  if (
+    existingListing.amount !== input.amount ||
+    existingListing.priceWei !== input.priceWei
+  ) {
+    throw new Error("Primary sale purchase does not match the saved listing.");
+  }
+
+  const updatedListings = [...listings];
+  updatedListings[listingIndex] = {
+    ...existingListing,
+    status: "Filled",
+    buyerWallet: input.buyerWallet,
+    purchaseTxHash: input.txHash,
+    purchasedAt: new Date().toISOString(),
+  };
+
+  const activeEscrowedAmount = (
+    BigInt(property.onchainRegistration.activeEscrowedAmount ?? "0") -
+    BigInt(input.amount)
+  ).toString();
+  const activeListingsCount = (
+    BigInt(property.onchainRegistration.activeListingsCount ?? "0") - BigInt(1)
+  ).toString();
+  const totalFreeValueSold = (
+    BigInt(property.onchainRegistration.totalFreeValueSold ?? "0") +
+    BigInt(input.amount)
+  ).toString();
+  const freeValueUnits = BigInt(property.onchainRegistration.freeValueUnits ?? "0");
+  const nextStatus =
+    totalFreeValueSold === freeValueUnits.toString()
+      ? "SoldOut"
+      : activeListingsCount !== "0"
+        ? "ActiveSale"
+        : "Tokenized";
+
+  const existingBuyerBalances = property.onchainRegistration.buyerBalances ?? [];
+  const buyerBalanceIndex = existingBuyerBalances.findIndex(
+    (entry) => entry.buyerWallet.toLowerCase() === input.buyerWallet.toLowerCase(),
+  );
+  const nextBuyerBalance = {
+    buyerWallet: input.buyerWallet,
+    freeValueUnits: input.amount,
+    totalPaidWei: input.priceWei,
+    lastPurchaseTxHash: input.txHash,
+    acquiredAt: new Date().toISOString(),
+  };
+  const buyerBalances =
+    buyerBalanceIndex === -1
+      ? [nextBuyerBalance, ...existingBuyerBalances]
+      : existingBuyerBalances.map((entry, index) =>
+          index === buyerBalanceIndex
+            ? {
+                ...entry,
+                freeValueUnits: (
+                  BigInt(entry.freeValueUnits) + BigInt(input.amount)
+                ).toString(),
+                totalPaidWei: (
+                  BigInt(entry.totalPaidWei) + BigInt(input.priceWei)
+                ).toString(),
+                lastPurchaseTxHash: input.txHash,
+                acquiredAt: new Date().toISOString(),
+              }
+            : entry,
+        );
+
+  property.onchainRegistration.status = nextStatus;
+  property.onchainRegistration.activeEscrowedAmount = activeEscrowedAmount;
+  property.onchainRegistration.activeListingsCount = activeListingsCount;
+  property.onchainRegistration.totalFreeValueSold = totalFreeValueSold;
+  property.onchainRegistration.sellerReceivedWei = (
+    BigInt(property.onchainRegistration.sellerReceivedWei ?? "0") +
+    BigInt(input.priceWei)
+  ).toString();
+  property.onchainRegistration.buyerBalances = buyerBalances;
+  property.onchainRegistration.primarySaleListings = updatedListings;
 
   await db.write();
 

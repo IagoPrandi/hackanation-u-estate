@@ -54,6 +54,11 @@ type PricingPreview = {
   unitPriceEth: string;
 };
 
+type PurchaseTarget = {
+  listingId: string;
+  localPropertyId: string;
+};
+
 const TOTAL_VALUE_UNITS = "1000000";
 const initialDocuments: MockDocumentInput[] = [
   {
@@ -92,6 +97,10 @@ export function PropertyWorkbench({
   const {
     writeContractAsync: writePrimarySaleListingAsync,
     isPending: isSubmittingPrimarySaleListing,
+  } = useWriteContract();
+  const {
+    writeContractAsync: writePrimarySalePurchaseAsync,
+    isPending: isSubmittingPrimarySalePurchase,
   } = useWriteContract();
   const { data: configuredPrimaryValueSaleAddress } = useReadContract({
     address: propertyRegistryAddress,
@@ -170,6 +179,19 @@ export function PropertyWorkbench({
     null,
   );
   const [listingNotice, setListingNotice] = useState<string | null>(null);
+  const [purchaseTarget, setPurchaseTarget] = useState<PurchaseTarget | null>(
+    null,
+  );
+  const [submittedPurchaseHash, setSubmittedPurchaseHash] = useState<Hex | null>(
+    null,
+  );
+  const [processedPurchaseHash, setProcessedPurchaseHash] = useState<Hex | null>(
+    null,
+  );
+  const [purchaseErrorMessage, setPurchaseErrorMessage] = useState<string | null>(
+    null,
+  );
+  const [purchaseNotice, setPurchaseNotice] = useState<string | null>(null);
   const {
     data: registrationReceipt,
     error: registrationReceiptError,
@@ -212,6 +234,17 @@ export function PropertyWorkbench({
     hash: submittedListingHash ?? undefined,
     query: {
       enabled: Boolean(submittedListingHash),
+    },
+  });
+  const {
+    data: purchaseReceipt,
+    error: purchaseReceiptError,
+    isLoading: isConfirmingPurchase,
+  } = useWaitForTransactionReceipt({
+    chainId: sepolia.id,
+    hash: submittedPurchaseHash ?? undefined,
+    query: {
+      enabled: Boolean(submittedPurchaseHash),
     },
   });
 
@@ -605,6 +638,90 @@ export function PropertyWorkbench({
     })();
   }, [listingLocalPropertyId, listingReceipt, processedListingHash]);
 
+  useEffect(() => {
+    if (
+      !purchaseReceipt ||
+      !purchaseTarget ||
+      processedPurchaseHash === purchaseReceipt.transactionHash
+    ) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        setProcessedPurchaseHash(purchaseReceipt.transactionHash);
+
+        const [primarySalePurchasedLog] = parseEventLogs({
+          abi: primaryValueSaleAbi,
+          eventName: "PrimarySalePurchased",
+          logs: purchaseReceipt.logs,
+          strict: true,
+        });
+
+        if (!primarySalePurchasedLog) {
+          throw new Error(
+            "Transaction confirmed, but PrimarySalePurchased event was not found.",
+          );
+        }
+
+        const response = await fetch("/api/properties", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "primarySalePurchase",
+            localPropertyId: purchaseTarget.localPropertyId,
+            propertyId: primarySalePurchasedLog.args.propertyId.toString(),
+            listingId: primarySalePurchasedLog.args.listingId.toString(),
+            txHash: purchaseReceipt.transactionHash,
+            buyerWallet: primarySalePurchasedLog.args.buyer,
+            amount: primarySalePurchasedLog.args.amount.toString(),
+            priceWei: primarySalePurchasedLog.args.priceWei.toString(),
+          }),
+        });
+
+        const payload = (await response.json()) as
+          | { record: SavedPropertyRecord }
+          | { error: string };
+
+        if (!response.ok || !("record" in payload)) {
+          throw new Error(
+            "error" in payload
+              ? payload.error
+              : "Could not persist the primary sale purchase locally.",
+          );
+        }
+
+        setProperties((current) =>
+          current.map((property) =>
+            property.localPropertyId === payload.record.localPropertyId
+              ? payload.record
+              : property,
+          ),
+        );
+        setLastSaved((current) =>
+          current?.localPropertyId === payload.record.localPropertyId
+            ? payload.record
+            : current,
+        );
+        setPurchaseNotice(
+          `Listing #${primarySalePurchasedLog.args.listingId.toString()} purchased on-chain by ${shorten(primarySalePurchasedLog.args.buyer)}.`,
+        );
+        setPurchaseErrorMessage(null);
+      } catch (error) {
+        setPurchaseErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Primary sale purchase persistence failed.",
+        );
+        setPurchaseNotice(null);
+      } finally {
+        setPurchaseTarget(null);
+      }
+    })();
+  }, [processedPurchaseHash, purchaseReceipt, purchaseTarget]);
+
   const primaryValueSaleAddress =
     configuredPrimaryValueSaleAddress &&
     isAddress(configuredPrimaryValueSaleAddress) &&
@@ -619,7 +736,10 @@ export function PropertyWorkbench({
     (property) => property.onchainRegistration?.status === "MockVerified",
   ).length;
   const tokenizedPropertiesCount = properties.filter(
-    (property) => property.onchainRegistration?.status === "Tokenized",
+    (property) =>
+      property.onchainRegistration?.status === "Tokenized" ||
+      property.onchainRegistration?.status === "ActiveSale" ||
+      property.onchainRegistration?.status === "SoldOut",
   ).length;
   const activeSalePropertiesCount = properties.filter(
     (property) => property.onchainRegistration?.status === "ActiveSale",
@@ -632,6 +752,8 @@ export function PropertyWorkbench({
     tokenizationReceiptError?.message ?? tokenizationErrorMessage;
   const activeListingErrorMessage =
     listingReceiptError?.message ?? listingErrorMessage;
+  const activePurchaseErrorMessage =
+    purchaseReceiptError?.message ?? purchaseErrorMessage;
 
   const marketValuePreview = useMemo(() => {
     try {
@@ -1108,20 +1230,95 @@ export function PropertyWorkbench({
     }
   };
 
+  const handleBuyPrimarySaleListing = async (
+    property: SavedPropertyRecord,
+    listingId: string,
+    priceWei: string,
+  ) => {
+    if (!address || !isConnected) {
+      setPurchaseErrorMessage("Connect a wallet before buying a primary sale listing.");
+      return;
+    }
+
+    if (chainId !== sepolia.id) {
+      setPurchaseErrorMessage("Switch the wallet to Sepolia first.");
+      return;
+    }
+
+    if (!primaryValueSaleAddress) {
+      setPurchaseErrorMessage(
+        "PrimaryValueSale is not available from the registry configuration.",
+      );
+      return;
+    }
+
+    if (!property.onchainRegistration) {
+      setPurchaseErrorMessage(
+        "Register and tokenize the property before buying from the marketplace.",
+      );
+      return;
+    }
+
+    const listing = property.onchainRegistration.primarySaleListings?.find(
+      (entry) => entry.listingId === listingId,
+    );
+
+    if (!listing || listing.status !== "Active") {
+      setPurchaseErrorMessage("Only active primary sale listings can be purchased.");
+      return;
+    }
+
+    if (property.ownerWallet.toLowerCase() === address.toLowerCase()) {
+      setPurchaseErrorMessage("The seller cannot buy their own primary sale listing.");
+      return;
+    }
+
+    setPurchaseErrorMessage(null);
+    setPurchaseNotice(null);
+    setPurchaseTarget({
+      listingId,
+      localPropertyId: property.localPropertyId,
+    });
+
+    try {
+      const txHash = await writePrimarySalePurchaseAsync({
+        address: primaryValueSaleAddress,
+        abi: primaryValueSaleAbi,
+        functionName: "buyPrimarySaleListing",
+        args: [BigInt(listingId)],
+        value: BigInt(priceWei),
+        chainId: sepolia.id,
+      });
+
+      setSubmittedPurchaseHash(txHash);
+      setProcessedPurchaseHash(null);
+      setPurchaseNotice(
+        `Purchase tx submitted: ${shortenHash(txHash)}. Waiting for confirmation.`,
+      );
+    } catch (error) {
+      setPurchaseTarget(null);
+      setPurchaseErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not submit the primary sale purchase transaction.",
+      );
+    }
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <section className="glass-panel overflow-hidden rounded-[2rem]">
         <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:px-10 lg:py-10">
           <div className="space-y-6">
             <div className="space-y-3">
-              <p className="soft-label">Milestone 0.8</p>
+              <p className="soft-label">Milestone 0.9</p>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
-                Open the primary sale for the free-value token.
+                Buy the free-value token from the primary sale.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                The owner can define how much free value to list, preview the equivalent
-                economic percentage and fiat price, and escrow only the free-value ERC-20
-                while the usufruct NFT and linked value stay untouched.
+                Buyers can pay the exact ETH price, receive only the listed free-value
+                ERC-20 units, and update the economic split while the usufruct NFT and
+                linked value remain with the original owner.
               </p>
             </div>
 
@@ -1225,6 +1422,16 @@ export function PropertyWorkbench({
 
             {activeListingErrorMessage ? (
               <Notice tone="danger">{activeListingErrorMessage}</Notice>
+            ) : null}
+
+            {purchaseNotice && !activePurchaseErrorMessage ? (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900">
+                {purchaseNotice}
+              </div>
+            ) : null}
+
+            {activePurchaseErrorMessage ? (
+              <Notice tone="danger">{activePurchaseErrorMessage}</Notice>
             ) : null}
           </div>
 
@@ -1670,7 +1877,8 @@ export function PropertyWorkbench({
                   const registration = property.onchainRegistration;
                   const isTokenized =
                     registration?.status === "Tokenized" ||
-                    registration?.status === "ActiveSale";
+                    registration?.status === "ActiveSale" ||
+                    registration?.status === "SoldOut";
                   const linkedValueUnits =
                     registration?.linkedValueUnits ??
                     Math.floor(
@@ -1742,6 +1950,24 @@ export function PropertyWorkbench({
                     registration?.primarySaleListings?.filter(
                       (listing) => listing.status === "Active",
                     ) ?? [];
+                  const buyerBalances = registration?.buyerBalances ?? [];
+                  const sellerReceivedEth = registration?.sellerReceivedWei
+                    ? weiToEthDecimalString(registration.sellerReceivedWei, 8)
+                    : "0";
+                  const participantRows = [
+                    {
+                      wallet: property.ownerWallet,
+                      usufruct: "Holder",
+                      linkedUnits: linkedValueUnits,
+                      freeUnits: ownerFreeBalanceUnits,
+                    },
+                    ...buyerBalances.map((buyerBalance) => ({
+                      wallet: buyerBalance.buyerWallet,
+                      usufruct: "No",
+                      linkedUnits: "0",
+                      freeUnits: buyerBalance.freeValueUnits,
+                    })),
+                  ];
                   const saleAmount =
                     saleAmountByLocalPropertyId[property.localPropertyId] ??
                     listedUnits;
@@ -1762,6 +1988,8 @@ export function PropertyWorkbench({
                     : "0";
                   const isCurrentListing =
                     listingLocalPropertyId === property.localPropertyId;
+                  const isCurrentPurchaseProperty =
+                    purchaseTarget?.localPropertyId === property.localPropertyId;
                   const isDraftOwner =
                     Boolean(address) &&
                     property.ownerWallet.toLowerCase() === address?.toLowerCase();
@@ -1797,7 +2025,8 @@ export function PropertyWorkbench({
                     isConfirmingVerification;
                   const verifyButtonLabel =
                     registration?.status === "Tokenized" ||
-                    registration?.status === "ActiveSale"
+                    registration?.status === "ActiveSale" ||
+                    registration?.status === "SoldOut"
                       ? "Already tokenized"
                       : registration?.status === "MockVerified"
                         ? "Mock verified"
@@ -1817,7 +2046,8 @@ export function PropertyWorkbench({
                     isConfirmingTokenization;
                   const tokenizeButtonLabel =
                     registration?.status === "Tokenized" ||
-                    registration?.status === "ActiveSale"
+                    registration?.status === "ActiveSale" ||
+                    registration?.status === "SoldOut"
                       ? "Tokenized"
                       : isCurrentTokenization && isSubmittingTokenization
                         ? "Submitting tokenization..."
@@ -2260,8 +2490,12 @@ export function PropertyWorkbench({
                                 />
                                 <DashboardMetric
                                   label="Participants"
-                                  value="1"
-                                  detail="Only the owner participates before primary sales open."
+                                  value={participantRows.length.toString()}
+                                  detail={
+                                    buyerBalances.length
+                                      ? "Owner and buyers are tracked after confirmed marketplace purchases."
+                                      : "Only the owner participates before a purchase settles."
+                                  }
                                 />
                               </div>
 
@@ -2272,18 +2506,25 @@ export function PropertyWorkbench({
                                   <p>Linked</p>
                                   <p>Free</p>
                                 </div>
-                                <div className="grid grid-cols-[1.1fr_0.8fr_0.8fr_0.8fr] gap-3 px-4 py-4 text-sm text-muted">
-                                  <p className="mono break-all text-foreground">
-                                    {property.ownerWallet}
-                                  </p>
-                                  <p className="text-foreground">Holder</p>
-                                  <p className="text-foreground">
-                                    {formatDecimalForDisplay(linkedValueUnits, 0)}
-                                  </p>
-                                  <p className="text-foreground">
-                                    {formatDecimalForDisplay(ownerFreeBalanceUnits, 0)}
-                                  </p>
-                                </div>
+                                {participantRows.map((participant) => (
+                                  <div
+                                    key={`${property.localPropertyId}-${participant.wallet}`}
+                                    className="grid grid-cols-[1.1fr_0.8fr_0.8fr_0.8fr] gap-3 border-t border-line px-4 py-4 text-sm text-muted first:border-t-0"
+                                  >
+                                    <p className="mono break-all text-foreground">
+                                      {participant.wallet}
+                                    </p>
+                                    <p className="text-foreground">
+                                      {participant.usufruct}
+                                    </p>
+                                    <p className="text-foreground">
+                                      {formatDecimalForDisplay(participant.linkedUnits, 0)}
+                                    </p>
+                                    <p className="text-foreground">
+                                      {formatDecimalForDisplay(participant.freeUnits, 0)}
+                                    </p>
+                                  </div>
+                                ))}
                               </div>
                             </div>
 
@@ -2295,8 +2536,21 @@ export function PropertyWorkbench({
                               <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-1">
                                 <DashboardMetric
                                   label="Buyer balances after sale"
-                                  value="0 buyers"
-                                  detail="Buying flow starts in milestone 0.9, so no buyer balance exists yet."
+                                  value={`${buyerBalances.length} buyers`}
+                                  detail={
+                                    buyerBalances.length
+                                      ? "Confirmed buyers below now hold free-value ERC-20 units."
+                                      : "No buyer balance recorded yet."
+                                  }
+                                />
+                                <DashboardMetric
+                                  label="Seller received in ETH"
+                                  value={formatEthLabel(sellerReceivedEth)}
+                                  detail={
+                                    sellerReceivedEth === "0"
+                                      ? "No confirmed primary sale payment yet."
+                                      : renderFiatSummary(sellerReceivedEth, fiatRates)
+                                  }
                                 />
                                 <DashboardMetric
                                   label="Active offers"
@@ -2423,6 +2677,22 @@ export function PropertyWorkbench({
                                         TOTAL_VALUE_UNITS,
                                         4,
                                       );
+                                      const isCurrentPurchase =
+                                        purchaseTarget?.listingId === listing.listingId &&
+                                        isCurrentPurchaseProperty;
+                                      const buyButtonDisabled =
+                                        !isConnected ||
+                                        !primaryValueSaleAddress ||
+                                        chainId !== sepolia.id ||
+                                        isDraftOwner ||
+                                        isSubmittingPrimarySalePurchase ||
+                                        isConfirmingPurchase;
+                                      const buyButtonLabel =
+                                        isCurrentPurchase && isSubmittingPrimarySalePurchase
+                                          ? "Submitting purchase..."
+                                          : isCurrentPurchase && isConfirmingPurchase
+                                            ? "Waiting for purchase..."
+                                            : "Buy with ETH";
 
                                       return (
                                         <div
@@ -2457,6 +2727,40 @@ export function PropertyWorkbench({
                                               {renderFiatSummary(listingPriceEth, fiatRates)}
                                             </p>
                                           </div>
+                                          <div className="mt-4 flex flex-wrap items-center gap-3">
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                void handleBuyPrimarySaleListing(
+                                                  property,
+                                                  listing.listingId,
+                                                  listing.priceWei,
+                                                );
+                                              }}
+                                              disabled={buyButtonDisabled}
+                                              className="inline-flex items-center justify-center rounded-full border border-stone-900/15 bg-white px-4 py-3 text-sm font-semibold text-stone-900 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                              {buyButtonLabel}
+                                            </button>
+
+                                            {isDraftOwner ? (
+                                              <span className="text-sm text-muted">
+                                                The seller cannot buy this listing.
+                                              </span>
+                                            ) : null}
+
+                                            {!isConnected ? (
+                                              <span className="text-sm text-muted">
+                                                Connect a buyer wallet to purchase this listing.
+                                              </span>
+                                            ) : null}
+
+                                            {isConnected && chainId !== sepolia.id ? (
+                                              <span className="text-sm text-muted">
+                                                Switch to Sepolia before purchasing.
+                                              </span>
+                                            ) : null}
+                                          </div>
                                         </div>
                                       );
                                     })}
@@ -2465,6 +2769,68 @@ export function PropertyWorkbench({
                                   <p className="mt-4 text-sm leading-7 text-muted">
                                     No offer is live yet. The first confirmed listing will appear
                                     here as the local marketplace view.
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="mt-4 rounded-3xl border border-line bg-white/75 p-4">
+                                <p className="soft-label">Buyer balances</p>
+                                {buyerBalances.length ? (
+                                  <div className="mt-4 space-y-3">
+                                    {buyerBalances.map((buyerBalance) => {
+                                      const buyerPercent = divideDecimalStrings(
+                                        multiplyDecimalStrings(
+                                          buyerBalance.freeValueUnits,
+                                          "100",
+                                          4,
+                                        ),
+                                        TOTAL_VALUE_UNITS,
+                                        4,
+                                      );
+                                      const buyerValueEth = multiplyDecimalStrings(
+                                        marketValueEth,
+                                        divideDecimalStrings(
+                                          buyerBalance.freeValueUnits,
+                                          TOTAL_VALUE_UNITS,
+                                          8,
+                                        ),
+                                        8,
+                                      );
+
+                                      return (
+                                        <div
+                                          key={`${property.localPropertyId}-${buyerBalance.buyerWallet}`}
+                                          className="rounded-3xl border border-line bg-stone-50/80 p-4"
+                                        >
+                                          <p className="mono break-all text-sm text-foreground">
+                                            {buyerBalance.buyerWallet}
+                                          </p>
+                                          <div className="mt-3 grid gap-3 text-sm text-muted md:grid-cols-2">
+                                            <p>
+                                              <span className="font-semibold text-foreground">
+                                                Free-value units:
+                                              </span>{" "}
+                                              {formatDecimalForDisplay(
+                                                buyerBalance.freeValueUnits,
+                                                0,
+                                              )}{" "}
+                                              ({buyerPercent}%)
+                                            </p>
+                                            <p>
+                                              <span className="font-semibold text-foreground">
+                                                Economic value:
+                                              </span>{" "}
+                                              {formatEthLabel(buyerValueEth)}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <p className="mt-4 text-sm leading-7 text-muted">
+                                    Buyer balances will appear here after the first confirmed
+                                    marketplace purchase.
                                   </p>
                                 )}
                               </div>
