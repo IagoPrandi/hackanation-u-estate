@@ -2652,34 +2652,34 @@ P0
 
 #### Checklist
 
-- [ ] Criar home com explicaÃ§Ã£o da tese.
-- [ ] Criar tela â€œTokenizar minha casaâ€.
-- [ ] Criar mock upload.
-- [ ] Criar tela de status de verificaÃ§Ã£o mock.
-- [ ] Criar tela de tokenizaÃ§Ã£o.
-- [ ] Criar seÃ§Ã£o explicando os trÃªs direitos.
-- [ ] Criar dashboard do imÃ³vel.
-- [ ] Criar formulÃ¡rio de venda de Direito de Valor Livre.
-- [ ] Criar marketplace de Direito de Valor Livre.
-- [ ] Criar visual de distribuiÃ§Ã£o econÃ´mica.
-- [ ] Criar visual de valores fiduciÃ¡rios.
-- [ ] Criar modo demo guiado.
-- [ ] Criar personagens: Pessoa A e Pessoa B.
-- [ ] Criar feedback de transaÃ§Ã£o enviada.
-- [ ] Criar feedback de transaÃ§Ã£o confirmada.
-- [ ] Criar estados de erro.
-- [ ] Criar estados de loading.
-- [ ] Criar estado de falha de cotaÃ§Ã£o fiduciÃ¡ria.
-- [ ] Criar estado de fallback de cotaÃ§Ã£o fiduciÃ¡ria.
+- [x] Criar home com explicaÃ§Ã£o da tese.
+- [x] Criar tela â€œTokenizar minha casaâ€.
+- [x] Criar mock upload.
+- [x] Criar tela de status de verificaÃ§Ã£o mock.
+- [x] Criar tela de tokenizaÃ§Ã£o.
+- [x] Criar seÃ§Ã£o explicando os trÃªs direitos.
+- [x] Criar dashboard do imÃ³vel.
+- [x] Criar formulÃ¡rio de venda de Direito de Valor Livre.
+- [x] Criar marketplace de Direito de Valor Livre.
+- [x] Criar visual de distribuiÃ§Ã£o econÃ´mica.
+- [x] Criar visual de valores fiduciÃ¡rios.
+- [x] Criar modo demo guiado.
+- [x] Criar personagens: Pessoa A e Pessoa B.
+- [x] Criar feedback de transaÃ§Ã£o enviada.
+- [x] Criar feedback de transaÃ§Ã£o confirmada.
+- [x] Criar estados de erro.
+- [x] Criar estados de loading.
+- [x] Criar estado de falha de cotaÃ§Ã£o fiduciÃ¡ria.
+- [x] Criar estado de fallback de cotaÃ§Ã£o fiduciÃ¡ria.
 
 #### CritÃ©rio de aceite
 
-- [ ] Demo completa pode ser apresentada em atÃ© 5 minutos.
-- [ ] Fluxo de tokenizaÃ§Ã£o Ã© compreensÃ­vel.
-- [ ] Fluxo de venda de valor livre Ã© compreensÃ­vel.
-- [ ] Banca entende que A mantÃ©m usufruto e valor vinculado.
-- [ ] Banca entende que B compra apenas Direito de Valor Livre.
-- [ ] Banca entende valores em ETH e moedas fiduciÃ¡rias.
+- [x] Demo completa pode ser apresentada em atÃ© 5 minutos.
+- [x] Fluxo de tokenizaÃ§Ã£o Ã© compreensÃ­vel.
+- [x] Fluxo de venda de valor livre Ã© compreensÃ­vel.
+- [x] Banca entende que A mantÃ©m usufruto e valor vinculado.
+- [x] Banca entende que B compra apenas Direito de Valor Livre.
+- [x] Banca entende valores em ETH e moedas fiduciÃ¡rias.
 
 #### Prioridade
 

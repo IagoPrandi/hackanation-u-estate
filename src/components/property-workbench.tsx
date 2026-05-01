@@ -64,7 +64,103 @@ type CancellationTarget = {
   localPropertyId: string;
 };
 
+type DemoPersona = "committee" | "personA" | "personB";
+
 const TOTAL_VALUE_UNITS = "1000000";
+const demoSteps = [
+  {
+    id: "thesis",
+    label: "1. Thesis",
+    anchorId: "home",
+    title: "Start with the split of rights",
+    proof: "Use the thesis card and the three-rights explainer to show the separation before touching any transaction.",
+    scripts: {
+      committee:
+        "One property becomes three rights: use, linked economic value, and free economic value. The demo proves that only free value goes to market.",
+      personA:
+        "I keep the right to live in the house and I also keep the linked economic slice. I only decide how much free value I want to sell.",
+      personB:
+        "I am not buying the house, the deed, or the right to use it. I am only buying the free economic slice exposed by the owner.",
+    },
+  },
+  {
+    id: "intake",
+    label: "2. Intake",
+    anchorId: "intake",
+    title: "Save the mock intake",
+    proof: "Show the intake form, the mock upload block, and the deterministic hashes that will later be referenced on-chain.",
+    scripts: {
+      committee:
+        "This step captures the off-chain property packet and creates deterministic metadata, location, and document hashes.",
+      personA:
+        "I describe my house, enter the mock address and coordinates, and attach mock documents before the first on-chain transaction.",
+      personB:
+        "At this point I do nothing. The owner prepares the property and the platform keeps the data consistent.",
+    },
+  },
+  {
+    id: "verification",
+    label: "3. Verify",
+    anchorId: "dashboard",
+    title: "Register and mock-verify",
+    proof: "Use the status rail and transaction banners to show submission, confirmation, and the move to MockVerified.",
+    scripts: {
+      committee:
+        "The owner registers the property on-chain, then the mock verifier step moves it into a verified state for the demo.",
+      personA:
+        "I send the registration transaction, wait for confirmation, and then approve the mock document package from my owner wallet.",
+      personB:
+        "I still cannot buy anything yet. The property must first become a verified on-chain record.",
+    },
+  },
+  {
+    id: "tokenization",
+    label: "4. Tokenize",
+    anchorId: "dashboard",
+    title: "Mint the two asset tracks",
+    proof: "Show the tokenization card, the usufruct NFT, the linked units, and the free-value supply.",
+    scripts: {
+      committee:
+        "Tokenization mints a non-transferable usufruct NFT and a restricted free-value ERC-20 while preserving the owner-linked slice.",
+      personA:
+        "After tokenization I still hold the use right and the linked value. The free-value supply appears separately so I can choose what to list.",
+      personB:
+        "Tokenization is what makes my later purchase possible, but it still does not grant me use rights.",
+    },
+  },
+  {
+    id: "sale",
+    label: "5. Sell",
+    anchorId: "dashboard",
+    title: "List only the free-value slice",
+    proof: "Use the sale preview, marketplace warnings, and fiat conversion to show that the listed amount excludes usufruct and linked value.",
+    scripts: {
+      committee:
+        "The owner lists a whole-number amount of free-value units. The price is calculated proportionally from total market value.",
+      personA:
+        "I decide how much free value to sell, but I keep living rights and the linked economic portion attached to the house.",
+      personB:
+        "This is the first moment when I can see an offer and understand exactly how many units and how much ETH or fiat they represent.",
+    },
+  },
+  {
+    id: "purchase",
+    label: "6. Buy",
+    anchorId: "dashboard",
+    title: "Close the purchase and explain the result",
+    proof: "Use the participant table, buyer balances, and economic distribution visual to show the final split between Person A and Person B.",
+    scripts: {
+      committee:
+        "After purchase, the buyer receives only free-value units. The owner remains the usufruct holder and keeps the linked economic slice.",
+      personA:
+        "I receive ETH from the sale, but I do not transfer the right to use the house and I do not give up the linked economic portion.",
+      personB:
+        "I end with a free-value balance only. I do not gain possession, residency, or the linked owner-protected slice.",
+    },
+  },
+] as const;
+type DemoStepId = (typeof demoSteps)[number]["id"];
+
 const initialDocuments: MockDocumentInput[] = [
   {
     type: "mock_deed",
@@ -122,6 +218,8 @@ export function PropertyWorkbench({
   const [draftLocalId, setDraftLocalId] = useState(() => crypto.randomUUID());
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [listedUnits] = useState("300000");
+  const [demoPersona, setDemoPersona] = useState<DemoPersona>("committee");
+  const [demoStepId, setDemoStepId] = useState<DemoStepId>("thesis");
   const [saleAmountByLocalPropertyId, setSaleAmountByLocalPropertyId] =
     useState<Record<string, string>>({});
   const [properties, setProperties] =
@@ -874,6 +972,38 @@ export function PropertyWorkbench({
     purchaseReceiptError?.message ?? purchaseErrorMessage;
   const activeCancellationErrorMessage =
     cancellationReceiptError?.message ?? cancellationErrorMessage;
+  const featuredProperty = lastSaved ?? properties[0] ?? null;
+  const activeDemoStep =
+    demoSteps.find((step) => step.id === demoStepId) ?? demoSteps[0];
+  const latestSuccessMessage =
+    cancellationNotice ??
+    purchaseNotice ??
+    listingNotice ??
+    tokenizationNotice ??
+    verificationNotice ??
+    registrationNotice;
+  const latestErrorMessage =
+    activeCancellationErrorMessage ??
+    activePurchaseErrorMessage ??
+    activeListingErrorMessage ??
+    activeTokenizationErrorMessage ??
+    activeVerificationErrorMessage ??
+    activeRegistrationErrorMessage ??
+    errorMessage ??
+    fiatErrorMessage;
+  const isAnyTransactionPending =
+    isRegisteringOnchain ||
+    isConfirmingRegistration ||
+    isSubmittingMockVerification ||
+    isConfirmingVerification ||
+    isSubmittingTokenization ||
+    isConfirmingTokenization ||
+    isSubmittingPrimarySaleListing ||
+    isConfirmingListing ||
+    isSubmittingPrimarySalePurchase ||
+    isConfirmingPurchase ||
+    isSubmittingPrimarySaleCancellation ||
+    isConfirmingCancellation;
 
   const marketValuePreview = useMemo(() => {
     try {
@@ -1504,19 +1634,37 @@ export function PropertyWorkbench({
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-      <section className="glass-panel overflow-hidden rounded-[2rem]">
+      <section id="home" className="glass-panel overflow-hidden rounded-[2rem]">
         <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:px-10 lg:py-10">
           <div className="space-y-6">
             <div className="space-y-3">
-              <p className="soft-label">Milestone 0.11</p>
+              <p className="soft-label">Milestone 0.12</p>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
-                Enforce platform-only asset transfers.
+                Explain tokenized home equity in five minutes.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                Direct wallet transfers and approvals stay blocked for the usufruct
-                NFT and the free-value token. Only the marketplace contract can move
-                the ERC-20 during listing, purchase, and cancellation settlement.
+                The guided demo starts with the thesis, walks through mock intake,
+                verification, tokenization, sale, and purchase, and makes one point
+                obvious: Person A keeps usufruct and linked value, while Person B can
+                only buy free economic value.
               </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {demoSteps.map((step) => (
+                <a
+                  key={step.id}
+                  href={`#${step.anchorId}`}
+                  onClick={() => setDemoStepId(step.id)}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    demoStepId === step.id
+                      ? "border-accent/20 bg-accent text-white"
+                      : "border-line bg-white/80 text-foreground hover:border-foreground/30"
+                  }`}
+                >
+                  {step.label}
+                </a>
+              ))}
             </div>
 
             <div className="data-grid">
@@ -1531,8 +1679,14 @@ export function PropertyWorkbench({
                 }
               />
               <StatCard
-                label="Draft local id"
-                value={shortenId(draftLocalId)}
+                label="Demo narrator"
+                value={
+                  demoPersona === "committee"
+                    ? "Committee"
+                    : demoPersona === "personA"
+                      ? "Person A"
+                      : "Person B"
+                }
               />
               <StatCard
                 label="Registry contract"
@@ -1554,6 +1708,44 @@ export function PropertyWorkbench({
                 label="Active sales"
                 value={`${activeSalePropertiesCount}/${registeredPropertiesCount}`}
               />
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-3xl border border-line bg-white/78 p-5">
+                <p className="soft-label">Thesis</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-foreground">
+                  One house becomes three rights.
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-muted">
+                  The owner keeps the right of use and the linked slice of economic
+                  value. Only the remaining free-value slice is tradable in the
+                  marketplace.
+                </p>
+              </div>
+              <div className="rounded-3xl border border-line bg-stone-100/85 p-5">
+                <p className="soft-label">Transaction console</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <DashboardMetric
+                    label="Sent"
+                    value={
+                      isAnyTransactionPending
+                        ? "Pending confirmation"
+                        : "No pending tx"
+                    }
+                    detail="Wallet submission feedback stays visible while a transaction is in flight."
+                  />
+                  <DashboardMetric
+                    label="Confirmed"
+                    value={latestSuccessMessage ? "Latest event stored" : "No confirmed tx yet"}
+                    detail={latestSuccessMessage ?? "Confirmation banners appear here after on-chain success."}
+                  />
+                  <DashboardMetric
+                    label="Error state"
+                    value={latestErrorMessage ? "Visible" : "Idle"}
+                    detail={latestErrorMessage ?? "Validation, chain, and persistence failures surface as explicit UI errors."}
+                  />
+                </div>
+              </div>
             </div>
 
             {fiatErrorMessage ? (
@@ -1646,8 +1838,186 @@ export function PropertyWorkbench({
         </div>
       </section>
 
+      <section id="demo" className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+        <article className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="soft-label">Guided demo mode</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em]">
+                Present the whole flow with one active narrator
+              </h2>
+            </div>
+            <div className="rounded-full border border-line bg-white/70 px-4 py-2 text-sm font-medium text-muted">
+              Active step: {activeDemoStep.label}
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-3xl border border-line bg-white/75 p-4 text-sm text-muted">
+            <span className="font-semibold text-foreground">Featured property:</span>{" "}
+            {featuredProperty
+              ? `${featuredProperty.address.street}, ${featuredProperty.address.number} (${featuredProperty.onchainRegistration?.status ?? "Draft"})`
+              : "No draft saved yet. Start at the intake form to build the demo asset."}
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            {[
+              {
+                id: "committee" as const,
+                label: "Committee",
+                summary: "Neutral presenter view",
+              },
+              {
+                id: "personA" as const,
+                label: "Person A",
+                summary: "Resident owner view",
+              },
+              {
+                id: "personB" as const,
+                label: "Person B",
+                summary: "Marketplace buyer view",
+              },
+            ].map((persona) => (
+              <button
+                key={persona.id}
+                type="button"
+                onClick={() => setDemoPersona(persona.id)}
+                className={`rounded-3xl border px-4 py-3 text-left transition ${
+                  demoPersona === persona.id
+                    ? "border-accent/20 bg-accent text-white"
+                    : "border-line bg-white/80 text-foreground hover:border-foreground/30"
+                }`}
+              >
+                <p className="text-sm font-semibold">{persona.label}</p>
+                <p className={`mt-1 text-sm ${demoPersona === persona.id ? "text-white/85" : "text-muted"}`}>
+                  {persona.summary}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {demoSteps.map((step) => (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => setDemoStepId(step.id)}
+                className={`rounded-3xl border p-4 text-left transition ${
+                  demoStepId === step.id
+                    ? "border-accent/20 bg-accent/10"
+                    : "border-line bg-white/75 hover:border-foreground/20"
+                }`}
+              >
+                <p className="soft-label">{step.label}</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">
+                  {step.title}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6 rounded-[1.5rem] border border-line bg-stone-100/80 p-5">
+            <p className="soft-label">Presenter script</p>
+            <h3 className="mt-2 text-lg font-semibold text-foreground">
+              {activeDemoStep.title}
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-muted">
+              {activeDemoStep.scripts[demoPersona]}
+            </p>
+            <p className="mt-4 text-sm leading-7 text-foreground">
+              <span className="font-semibold">Show this proof:</span>{" "}
+              {activeDemoStep.proof}
+            </p>
+            <a
+              href={`#${activeDemoStep.anchorId}`}
+              className="mt-4 inline-flex items-center justify-center rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-foreground transition hover:border-foreground/30"
+            >
+              Jump to active section
+            </a>
+          </div>
+        </article>
+
+        <article className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
+          <p className="soft-label">Three rights explained</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em]">
+            The committee can see what stays with A and what reaches B
+          </h2>
+
+          <div className="mt-6 grid gap-4">
+            <RightCard
+              accentClassName="bg-emerald-600"
+              title="Usufruct right"
+              ownerLabel="Stays with Person A"
+              body="The NFT represents the right of use and possession. It does not move in the marketplace flow."
+            />
+            <RightCard
+              accentClassName="bg-accent"
+              title="Linked economic value"
+              ownerLabel="Protected for Person A"
+              body="This slice remains attached to the owner position even after free-value tokens are sold."
+            />
+            <RightCard
+              accentClassName="bg-amber-500"
+              title="Free economic value"
+              ownerLabel="Tradable to Person B"
+              body="Only this ERC-20 slice can be listed, escrowed, bought, and tracked in buyer balances."
+            />
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <PersonaCard
+              eyebrow="Person A"
+              title="Resident owner"
+              body="Keeps use rights, linked value, and any unsold free-value balance. Receives ETH when the free-value slice is sold."
+            />
+            <PersonaCard
+              eyebrow="Person B"
+              title="Marketplace buyer"
+              body="Receives only free-value units. No use right, no linked owner-protected slice, and no direct deed control."
+            />
+          </div>
+
+          <div className="mt-6 rounded-[1.5rem] border border-line bg-white/75 p-5">
+            <p className="soft-label">Fiat quote state</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <DashboardMetric
+                label="USD quote"
+                value={getFiatRateLabel("usd", fiatRates, isLoadingFiatRates)}
+                detail="Used in the house, listing, and unit previews."
+              />
+              <DashboardMetric
+                label="BRL quote"
+                value={getFiatRateLabel("brl", fiatRates, isLoadingFiatRates)}
+                detail="Important for a Brazil-based committee explanation."
+              />
+              <DashboardMetric
+                label="Fallback"
+                value={
+                  isLoadingFiatRates
+                    ? "Loading"
+                    : fiatRates
+                      ? fiatRates.cached
+                        ? "Cached route"
+                        : "Live route"
+                      : "ETH-only fallback"
+                }
+                detail={
+                  isLoadingFiatRates
+                    ? "The UI keeps loading state visible instead of inventing a rate."
+                    : fiatRates
+                      ? fiatRates.cached
+                        ? `Using cached data from ${formatTimestamp(fiatRates.updatedAt)}.`
+                        : "Live fiat conversion is available."
+                      : "The demo keeps running in ETH and explicitly explains that fiat conversion is unavailable."
+                }
+              />
+            </div>
+          </div>
+        </article>
+      </section>
+
       <section className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr]">
         <form
+          id="intake"
           onSubmit={handleSubmit}
           className="glass-panel rounded-[1.75rem] p-6 sm:p-8"
         >
@@ -1880,7 +2250,7 @@ export function PropertyWorkbench({
         </form>
 
         <div className="flex flex-col gap-6">
-          <section className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
+          <section id="hashes" className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
             <p className="soft-label">Pre-save deterministic preview</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em]">
               Data that will be referenced on-chain
@@ -1934,7 +2304,7 @@ export function PropertyWorkbench({
             )}
           </section>
 
-          <section className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
+          <section id="pricing" className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="soft-label">Fiat pricing preview</p>
@@ -1946,6 +2316,20 @@ export function PropertyWorkbench({
                 Total units: {formatDecimalForDisplay(TOTAL_VALUE_UNITS, 0)}
               </div>
             </div>
+
+            {isLoadingFiatRates ? (
+              <div className="mt-6 rounded-3xl border border-line bg-stone-100/80 p-4 text-sm leading-7 text-muted">
+                Loading ETH to fiat quotes for the demo. Until the route answers, the
+                interface keeps the loading state explicit.
+              </div>
+            ) : null}
+
+            {!isLoadingFiatRates && !fiatRates ? (
+              <div className="mt-6 rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm leading-7 text-amber-950">
+                Fiat conversion failed. The fallback state keeps ETH values visible and
+                clearly tells the committee that USD and BRL are temporarily unavailable.
+              </div>
+            ) : null}
 
             {pricingPreview ? (
               <div className="mt-6 space-y-4">
@@ -2061,7 +2445,7 @@ export function PropertyWorkbench({
             )}
           </section>
 
-          <section className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
+          <section id="dashboard" className="glass-panel rounded-[1.75rem] p-6 sm:p-8">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="soft-label">lowdb volume data</p>
@@ -2174,6 +2558,57 @@ export function PropertyWorkbench({
                       linkedUnits: "0",
                       freeUnits: buyerBalance.freeValueUnits,
                     })),
+                  ];
+                  const ownerFreeBalancePercent = isTokenized
+                    ? divideDecimalStrings(
+                        multiplyDecimalStrings(ownerFreeBalanceUnits, "100", 4),
+                        TOTAL_VALUE_UNITS,
+                        4,
+                      )
+                    : "0";
+                  const soldPercent = isTokenized
+                    ? divideDecimalStrings(
+                        multiplyDecimalStrings(totalFreeValueSold, "100", 4),
+                        TOTAL_VALUE_UNITS,
+                        4,
+                      )
+                    : "0";
+                  const escrowPercent = isTokenized
+                    ? divideDecimalStrings(
+                        multiplyDecimalStrings(activeEscrowedAmount, "100", 4),
+                        TOTAL_VALUE_UNITS,
+                        4,
+                      )
+                    : "0";
+                  const lifecycleStages = [
+                    {
+                      label: "Draft saved",
+                      done: true,
+                    },
+                    {
+                      label: "Registered",
+                      done: Boolean(registration),
+                    },
+                    {
+                      label: "Mock verified",
+                      done:
+                        registration?.status === "MockVerified" ||
+                        registration?.status === "Tokenized" ||
+                        registration?.status === "ActiveSale" ||
+                        registration?.status === "SoldOut",
+                    },
+                    {
+                      label: "Tokenized",
+                      done: isTokenized,
+                    },
+                    {
+                      label: "Listed",
+                      done: activeListings.length > 0,
+                    },
+                    {
+                      label: "Purchased",
+                      done: buyerBalances.length > 0,
+                    },
                   ];
                   const saleAmount =
                     saleAmountByLocalPropertyId[property.localPropertyId] ??
@@ -2330,6 +2765,37 @@ export function PropertyWorkbench({
                           <p className="mono mt-1 text-foreground">
                             {property.location.lat}, {property.location.lng}
                           </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-3xl border border-line bg-stone-100/80 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="soft-label">Guided status view</p>
+                            <p className="mt-2 text-sm text-muted">
+                              This single rail is the fastest way to explain where the
+                              property sits in the demo lifecycle.
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
+                            {registration?.status ?? "Draft"}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                          {lifecycleStages.map((stage) => (
+                            <div
+                              key={`${property.localPropertyId}-${stage.label}`}
+                              className={`rounded-3xl border p-3 text-sm ${
+                                stage.done
+                                  ? "border-emerald-600/20 bg-emerald-600/10 text-emerald-900"
+                                  : "border-line bg-white/80 text-muted"
+                              }`}
+                            >
+                              <p className="soft-label">Stage</p>
+                              <p className="mt-2 font-semibold">{stage.label}</p>
+                            </div>
+                          ))}
                         </div>
                       </div>
 
@@ -2709,9 +3175,67 @@ export function PropertyWorkbench({
                                   detail={
                                     buyerBalances.length
                                       ? "Owner and buyers are tracked after confirmed marketplace purchases."
-                                      : "Only the owner participates before a purchase settles."
+                                    : "Only the owner participates before a purchase settles."
                                   }
                                 />
+                              </div>
+
+                              <div className="mt-4 rounded-3xl border border-line bg-stone-50/80 p-4">
+                                <p className="soft-label">Economic distribution visual</p>
+                                {isTokenized ? (
+                                  <>
+                                    <div className="mt-3 flex h-4 overflow-hidden rounded-full bg-stone-200">
+                                      <div
+                                        className="bg-emerald-600"
+                                        style={{ width: `${linkedPercent}%` }}
+                                      />
+                                      <div
+                                        className="bg-accent"
+                                        style={{ width: `${ownerFreeBalancePercent}%` }}
+                                      />
+                                      <div
+                                        className="bg-stone-400"
+                                        style={{ width: `${escrowPercent}%` }}
+                                      />
+                                      <div
+                                        className="bg-amber-500"
+                                        style={{ width: `${soldPercent}%` }}
+                                      />
+                                    </div>
+                                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                                      <DistributionLegend
+                                        colorClassName="bg-emerald-600"
+                                        label="Linked value kept by A"
+                                        units={linkedValueUnits}
+                                        percent={linkedPercent}
+                                      />
+                                      <DistributionLegend
+                                        colorClassName="bg-accent"
+                                        label="Free balance still with A"
+                                        units={ownerFreeBalanceUnits}
+                                        percent={ownerFreeBalancePercent}
+                                      />
+                                      <DistributionLegend
+                                        colorClassName="bg-stone-400"
+                                        label="Free value in escrow"
+                                        units={activeEscrowedAmount}
+                                        percent={escrowPercent}
+                                      />
+                                      <DistributionLegend
+                                        colorClassName="bg-amber-500"
+                                        label="Free value bought by B"
+                                        units={totalFreeValueSold}
+                                        percent={soldPercent}
+                                      />
+                                    </div>
+                                  </>
+                                ) : (
+                                  <p className="mt-3 text-sm leading-7 text-muted">
+                                    The visual appears after tokenization because the three
+                                    slices only become explicit once the NFT and ERC-20 are
+                                    minted.
+                                  </p>
+                                )}
                               </div>
 
                               <div className="mt-4 overflow-hidden rounded-3xl border border-line">
@@ -3168,6 +3692,74 @@ function Notice({
   );
 }
 
+function RightCard({
+  accentClassName,
+  title,
+  ownerLabel,
+  body,
+}: {
+  accentClassName: string;
+  title: string;
+  ownerLabel: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-line bg-white/80 p-5">
+      <div className="flex items-start gap-4">
+        <span className={`mt-1 h-3 w-3 rounded-full ${accentClassName}`} />
+        <div className="min-w-0">
+          <p className="text-base font-semibold text-foreground">{title}</p>
+          <p className="mt-1 text-sm font-medium text-accent">{ownerLabel}</p>
+          <p className="mt-3 text-sm leading-7 text-muted">{body}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PersonaCard({
+  eyebrow,
+  title,
+  body,
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-line bg-stone-100/80 p-5">
+      <p className="soft-label">{eyebrow}</p>
+      <p className="mt-2 text-base font-semibold text-foreground">{title}</p>
+      <p className="mt-3 text-sm leading-7 text-muted">{body}</p>
+    </div>
+  );
+}
+
+function DistributionLegend({
+  colorClassName,
+  label,
+  units,
+  percent,
+}: {
+  colorClassName: string;
+  label: string;
+  units: string;
+  percent: string;
+}) {
+  return (
+    <div className="rounded-3xl border border-line bg-white/80 p-4">
+      <div className="flex items-center gap-3">
+        <span className={`h-3 w-3 rounded-full ${colorClassName}`} />
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+      </div>
+      <p className="mt-3 text-base font-semibold text-foreground">
+        {formatDecimalForDisplay(units, 0)} units
+      </p>
+      <p className="mt-1 text-sm text-muted">{percent}% of total value</p>
+    </div>
+  );
+}
+
 function PricingRow({
   label,
   ethValue,
@@ -3316,10 +3908,6 @@ function formatTimestamp(value: string | null) {
 
 function shorten(value: string) {
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
-}
-
-function shortenId(value: string) {
-  return `${value.slice(0, 8)}...${value.slice(-4)}`;
 }
 
 function shortenHash(value: string) {
