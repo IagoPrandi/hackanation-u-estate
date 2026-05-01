@@ -962,6 +962,126 @@ contract PropertyRegistryTest {
         );
     }
 
+    function testCancelPrimarySaleListingReturnsEscrowAndResetsStatus() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        address valueTokenAddress = registry.tokenizeProperty(propertyId);
+
+        vm.prank(ALICE);
+        uint256 listingId = sale.createPrimarySaleListing(propertyId, 300_000);
+
+        vm.prank(ALICE);
+        sale.cancelPrimarySaleListing(listingId);
+
+        {
+            (
+                uint256 storedListingId,
+                uint256 storedPropertyId,
+                address seller,
+                uint256 amount,
+                uint256 priceWei,
+                ProtocolTypes.SaleStatus saleStatus
+            ) = sale.listings(listingId);
+
+            require(storedListingId == listingId, "stored listing id mismatch");
+            require(storedPropertyId == propertyId, "stored property mismatch");
+            require(seller == ALICE, "seller mismatch");
+            require(amount == 300_000, "listing amount mismatch");
+            require(priceWei == 3 ether, "listing price mismatch");
+            require(
+                uint8(saleStatus) == uint8(ProtocolTypes.SaleStatus.Cancelled),
+                "listing status mismatch"
+            );
+        }
+
+        require(
+            sale.activeListingsCountByProperty(propertyId) == 0,
+            "active listing count mismatch"
+        );
+        require(
+            sale.activeEscrowedAmountByProperty(propertyId) == 0,
+            "active escrow amount mismatch"
+        );
+        require(
+            sale.totalFreeValueSoldByProperty(propertyId) == 0,
+            "sold amount mismatch"
+        );
+
+        {
+            (
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+                ,
+                ProtocolTypes.PropertyStatus status
+            ) = registry.properties(propertyId);
+            require(
+                uint8(status) == uint8(ProtocolTypes.PropertyStatus.Tokenized),
+                "property status mismatch"
+            );
+        }
+
+        PropertyValueToken valueToken = PropertyValueToken(valueTokenAddress);
+        require(
+            valueToken.balanceOf(ALICE) == 800_000,
+            "seller free balance mismatch"
+        );
+        require(
+            valueToken.balanceOf(address(sale)) == 0,
+            "sale escrow balance mismatch"
+        );
+    }
+
+    function testCancelPrimarySaleListingRejectsMissingListing() external {
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PrimaryValueSale.ListingNotFound.selector)
+        );
+        sale.cancelPrimarySaleListing(999);
+    }
+
+    function testCancelPrimarySaleListingRejectsNonSeller() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        registry.tokenizeProperty(propertyId);
+
+        vm.prank(ALICE);
+        uint256 listingId = sale.createPrimarySaleListing(propertyId, 300_000);
+
+        vm.prank(BOB);
+        vm.expectRevert(
+            abi.encodeWithSelector(PrimaryValueSale.SellerOnly.selector)
+        );
+        sale.cancelPrimarySaleListing(listingId);
+    }
+
+    function testCancelPrimarySaleListingRejectsInactiveListing() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        registry.tokenizeProperty(propertyId);
+
+        vm.prank(ALICE);
+        uint256 listingId = sale.createPrimarySaleListing(propertyId, 300_000);
+
+        vm.prank(ALICE);
+        sale.cancelPrimarySaleListing(listingId);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PrimaryValueSale.ListingNotActive.selector)
+        );
+        sale.cancelPrimarySaleListing(listingId);
+    }
+
     function _registerAndVerifyProperty() internal returns (uint256 propertyId) {
         vm.prank(ALICE);
         propertyId = registry.registerProperty(

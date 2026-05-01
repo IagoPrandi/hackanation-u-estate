@@ -4,6 +4,7 @@ import {
   listPropertyDrafts,
   savePropertyMockVerification,
   saveOnchainPropertyRegistration,
+  savePropertyPrimarySaleCancellation,
   savePropertyPrimarySaleListing,
   savePropertyPrimarySalePurchase,
   savePropertyTokenization,
@@ -71,7 +72,9 @@ export async function PATCH(request: Request) {
             ? await savePropertyTokenization(parsedPayload.data)
             : parsedPayload.data.kind === "primarySaleListing"
               ? await savePropertyPrimarySaleListing(parsedPayload.data)
-              : await savePropertyPrimarySalePurchase(parsedPayload.data);
+              : parsedPayload.data.kind === "primarySalePurchase"
+                ? await savePropertyPrimarySalePurchase(parsedPayload.data)
+                : await savePropertyPrimarySaleCancellation(parsedPayload.data);
 
     return NextResponse.json({ record });
   } catch (error) {
@@ -90,6 +93,7 @@ export async function PATCH(request: Request) {
             message === "Primary sale listing is not saved locally." ||
             message === "Primary sale listing is not active locally." ||
             message === "Primary sale purchase does not match the saved listing." ||
+            message === "Primary sale cancellation does not match the saved listing." ||
             message === "On-chain property id does not match the saved draft."
           ? 409
           : 500;

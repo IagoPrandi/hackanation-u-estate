@@ -19,6 +19,13 @@ export const primaryValueSaleAbi = [
     outputs: [],
   },
   {
+    type: "function",
+    stateMutability: "nonpayable",
+    name: "cancelPrimarySaleListing",
+    inputs: [{ name: "listingId", type: "uint256" }],
+    outputs: [],
+  },
+  {
     type: "event",
     anonymous: false,
     name: "PrimarySaleListed",
@@ -71,6 +78,17 @@ export const primaryValueSaleAbi = [
       { indexed: true, name: "listingId", type: "uint256" },
       { indexed: true, name: "seller", type: "address" },
       { indexed: false, name: "amountWei", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    anonymous: false,
+    name: "PrimarySaleCancelled",
+    inputs: [
+      { indexed: true, name: "listingId", type: "uint256" },
+      { indexed: true, name: "propertyId", type: "uint256" },
+      { indexed: true, name: "seller", type: "address" },
+      { indexed: false, name: "amount", type: "uint256" },
     ],
   },
 ] as const;

@@ -59,6 +59,11 @@ type PurchaseTarget = {
   localPropertyId: string;
 };
 
+type CancellationTarget = {
+  listingId: string;
+  localPropertyId: string;
+};
+
 const TOTAL_VALUE_UNITS = "1000000";
 const initialDocuments: MockDocumentInput[] = [
   {
@@ -101,6 +106,10 @@ export function PropertyWorkbench({
   const {
     writeContractAsync: writePrimarySalePurchaseAsync,
     isPending: isSubmittingPrimarySalePurchase,
+  } = useWriteContract();
+  const {
+    writeContractAsync: writePrimarySaleCancellationAsync,
+    isPending: isSubmittingPrimarySaleCancellation,
   } = useWriteContract();
   const { data: configuredPrimaryValueSaleAddress } = useReadContract({
     address: propertyRegistryAddress,
@@ -192,6 +201,18 @@ export function PropertyWorkbench({
     null,
   );
   const [purchaseNotice, setPurchaseNotice] = useState<string | null>(null);
+  const [cancellationTarget, setCancellationTarget] =
+    useState<CancellationTarget | null>(null);
+  const [submittedCancellationHash, setSubmittedCancellationHash] =
+    useState<Hex | null>(null);
+  const [processedCancellationHash, setProcessedCancellationHash] =
+    useState<Hex | null>(null);
+  const [cancellationErrorMessage, setCancellationErrorMessage] = useState<
+    string | null
+  >(null);
+  const [cancellationNotice, setCancellationNotice] = useState<string | null>(
+    null,
+  );
   const {
     data: registrationReceipt,
     error: registrationReceiptError,
@@ -245,6 +266,17 @@ export function PropertyWorkbench({
     hash: submittedPurchaseHash ?? undefined,
     query: {
       enabled: Boolean(submittedPurchaseHash),
+    },
+  });
+  const {
+    data: cancellationReceipt,
+    error: cancellationReceiptError,
+    isLoading: isConfirmingCancellation,
+  } = useWaitForTransactionReceipt({
+    chainId: sepolia.id,
+    hash: submittedCancellationHash ?? undefined,
+    query: {
+      enabled: Boolean(submittedCancellationHash),
     },
   });
 
@@ -722,6 +754,92 @@ export function PropertyWorkbench({
     })();
   }, [processedPurchaseHash, purchaseReceipt, purchaseTarget]);
 
+  useEffect(() => {
+    if (
+      !cancellationReceipt ||
+      !cancellationTarget ||
+      processedCancellationHash === cancellationReceipt.transactionHash
+    ) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        setProcessedCancellationHash(cancellationReceipt.transactionHash);
+
+        const [primarySaleCancelledLog] = parseEventLogs({
+          abi: primaryValueSaleAbi,
+          eventName: "PrimarySaleCancelled",
+          logs: cancellationReceipt.logs,
+          strict: true,
+        });
+
+        if (!primarySaleCancelledLog) {
+          throw new Error(
+            "Transaction confirmed, but PrimarySaleCancelled event was not found.",
+          );
+        }
+
+        const response = await fetch("/api/properties", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "primarySaleCancellation",
+            localPropertyId: cancellationTarget.localPropertyId,
+            propertyId: primarySaleCancelledLog.args.propertyId.toString(),
+            listingId: primarySaleCancelledLog.args.listingId.toString(),
+            txHash: cancellationReceipt.transactionHash,
+            amount: primarySaleCancelledLog.args.amount.toString(),
+          }),
+        });
+
+        const payload = (await response.json()) as
+          | { record: SavedPropertyRecord }
+          | { error: string };
+
+        if (!response.ok || !("record" in payload)) {
+          throw new Error(
+            "error" in payload
+              ? payload.error
+              : "Could not persist the primary sale cancellation locally.",
+          );
+        }
+
+        setProperties((current) =>
+          current.map((property) =>
+            property.localPropertyId === payload.record.localPropertyId
+              ? payload.record
+              : property,
+          ),
+        );
+        setLastSaved((current) =>
+          current?.localPropertyId === payload.record.localPropertyId
+            ? payload.record
+            : current,
+        );
+        setCancellationNotice(
+          `Listing #${primarySaleCancelledLog.args.listingId.toString()} cancelled on-chain.`,
+        );
+        setCancellationErrorMessage(null);
+      } catch (error) {
+        setCancellationErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Primary sale cancellation persistence failed.",
+        );
+        setCancellationNotice(null);
+      } finally {
+        setCancellationTarget(null);
+      }
+    })();
+  }, [
+    cancellationReceipt,
+    cancellationTarget,
+    processedCancellationHash,
+  ]);
+
   const primaryValueSaleAddress =
     configuredPrimaryValueSaleAddress &&
     isAddress(configuredPrimaryValueSaleAddress) &&
@@ -754,6 +872,8 @@ export function PropertyWorkbench({
     listingReceiptError?.message ?? listingErrorMessage;
   const activePurchaseErrorMessage =
     purchaseReceiptError?.message ?? purchaseErrorMessage;
+  const activeCancellationErrorMessage =
+    cancellationReceiptError?.message ?? cancellationErrorMessage;
 
   const marketValuePreview = useMemo(() => {
     try {
@@ -1305,20 +1425,97 @@ export function PropertyWorkbench({
     }
   };
 
+  const handleCancelPrimarySaleListing = async (
+    property: SavedPropertyRecord,
+    listingId: string,
+  ) => {
+    if (!address || !isConnected) {
+      setCancellationErrorMessage(
+        "Connect the seller wallet before cancelling a primary sale listing.",
+      );
+      return;
+    }
+
+    if (chainId !== sepolia.id) {
+      setCancellationErrorMessage("Switch the wallet to Sepolia first.");
+      return;
+    }
+
+    if (!primaryValueSaleAddress) {
+      setCancellationErrorMessage(
+        "PrimaryValueSale is not available from the registry configuration.",
+      );
+      return;
+    }
+
+    if (!property.onchainRegistration) {
+      setCancellationErrorMessage(
+        "Register and tokenize the property before cancelling marketplace listings.",
+      );
+      return;
+    }
+
+    const listing = property.onchainRegistration.primarySaleListings?.find(
+      (entry) => entry.listingId === listingId,
+    );
+
+    if (!listing || listing.status !== "Active") {
+      setCancellationErrorMessage("Only active primary sale listings can be cancelled.");
+      return;
+    }
+
+    if (property.ownerWallet.toLowerCase() !== address.toLowerCase()) {
+      setCancellationErrorMessage(
+        "Only the property owner can cancel this primary sale listing.",
+      );
+      return;
+    }
+
+    setCancellationErrorMessage(null);
+    setCancellationNotice(null);
+    setCancellationTarget({
+      listingId,
+      localPropertyId: property.localPropertyId,
+    });
+
+    try {
+      const txHash = await writePrimarySaleCancellationAsync({
+        address: primaryValueSaleAddress,
+        abi: primaryValueSaleAbi,
+        functionName: "cancelPrimarySaleListing",
+        args: [BigInt(listingId)],
+        chainId: sepolia.id,
+      });
+
+      setSubmittedCancellationHash(txHash);
+      setProcessedCancellationHash(null);
+      setCancellationNotice(
+        `Cancellation tx submitted: ${shortenHash(txHash)}. Waiting for confirmation.`,
+      );
+    } catch (error) {
+      setCancellationTarget(null);
+      setCancellationErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not submit the primary sale cancellation transaction.",
+      );
+    }
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <section className="glass-panel overflow-hidden rounded-[2rem]">
         <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:px-10 lg:py-10">
           <div className="space-y-6">
             <div className="space-y-3">
-              <p className="soft-label">Milestone 0.9</p>
+              <p className="soft-label">Milestone 0.10</p>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
-                Buy the free-value token from the primary sale.
+                Cancel an active primary sale offer safely.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                Buyers can pay the exact ETH price, receive only the listed free-value
-                ERC-20 units, and update the economic split while the usufruct NFT and
-                linked value remain with the original owner.
+                The seller can unwind an active offer, recover escrowed free-value
+                tokens, and push the property status back to the correct sale state
+                without moving the usufruct NFT or linked value.
               </p>
             </div>
 
@@ -1432,6 +1629,16 @@ export function PropertyWorkbench({
 
             {activePurchaseErrorMessage ? (
               <Notice tone="danger">{activePurchaseErrorMessage}</Notice>
+            ) : null}
+
+            {cancellationNotice && !activeCancellationErrorMessage ? (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900">
+                {cancellationNotice}
+              </div>
+            ) : null}
+
+            {activeCancellationErrorMessage ? (
+              <Notice tone="danger">{activeCancellationErrorMessage}</Notice>
             ) : null}
           </div>
 
@@ -1990,6 +2197,8 @@ export function PropertyWorkbench({
                     listingLocalPropertyId === property.localPropertyId;
                   const isCurrentPurchaseProperty =
                     purchaseTarget?.localPropertyId === property.localPropertyId;
+                  const isCurrentCancellationProperty =
+                    cancellationTarget?.localPropertyId === property.localPropertyId;
                   const isDraftOwner =
                     Boolean(address) &&
                     property.ownerWallet.toLowerCase() === address?.toLowerCase();
@@ -2680,6 +2889,10 @@ export function PropertyWorkbench({
                                       const isCurrentPurchase =
                                         purchaseTarget?.listingId === listing.listingId &&
                                         isCurrentPurchaseProperty;
+                                      const isCurrentCancellation =
+                                        cancellationTarget?.listingId ===
+                                          listing.listingId &&
+                                        isCurrentCancellationProperty;
                                       const buyButtonDisabled =
                                         !isConnected ||
                                         !primaryValueSaleAddress ||
@@ -2693,6 +2906,21 @@ export function PropertyWorkbench({
                                           : isCurrentPurchase && isConfirmingPurchase
                                             ? "Waiting for purchase..."
                                             : "Buy with ETH";
+                                      const cancelButtonDisabled =
+                                        !isConnected ||
+                                        !primaryValueSaleAddress ||
+                                        chainId !== sepolia.id ||
+                                        !isDraftOwner ||
+                                        isSubmittingPrimarySaleCancellation ||
+                                        isConfirmingCancellation;
+                                      const cancelButtonLabel =
+                                        isCurrentCancellation &&
+                                        isSubmittingPrimarySaleCancellation
+                                          ? "Submitting cancellation..."
+                                          : isCurrentCancellation &&
+                                              isConfirmingCancellation
+                                            ? "Waiting for cancellation..."
+                                            : "Cancel offer";
 
                                       return (
                                         <div
@@ -2743,9 +2971,23 @@ export function PropertyWorkbench({
                                               {buyButtonLabel}
                                             </button>
 
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                void handleCancelPrimarySaleListing(
+                                                  property,
+                                                  listing.listingId,
+                                                );
+                                              }}
+                                              disabled={cancelButtonDisabled}
+                                              className="inline-flex items-center justify-center rounded-full border border-stone-900/15 bg-white px-4 py-3 text-sm font-semibold text-stone-900 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                              {cancelButtonLabel}
+                                            </button>
+
                                             {isDraftOwner ? (
                                               <span className="text-sm text-muted">
-                                                The seller cannot buy this listing.
+                                                The seller cannot buy this listing, but can cancel it.
                                               </span>
                                             ) : null}
 
@@ -2757,7 +2999,13 @@ export function PropertyWorkbench({
 
                                             {isConnected && chainId !== sepolia.id ? (
                                               <span className="text-sm text-muted">
-                                                Switch to Sepolia before purchasing.
+                                                Switch to Sepolia before interacting with this listing.
+                                              </span>
+                                            ) : null}
+
+                                            {!isDraftOwner && isConnected ? (
+                                              <span className="text-sm text-muted">
+                                                Only the seller wallet can cancel this active offer.
                                               </span>
                                             ) : null}
                                           </div>

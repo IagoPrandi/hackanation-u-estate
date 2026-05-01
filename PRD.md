@@ -2587,26 +2587,26 @@ P0
 
 #### Checklist
 
-- [ ] Implementar `cancelPrimarySaleListing`.
-- [ ] Usar `nonReentrant`.
-- [ ] Validar `listingExists`.
-- [ ] Validar listing ativo.
-- [ ] Validar `msg.sender == seller`.
-- [ ] Mudar listing para `Cancelled`.
-- [ ] Atualizar `activeListingsCountByProperty`.
-- [ ] Atualizar `activeEscrowedAmountByProperty`.
-- [ ] Devolver tokens livres para seller.
-- [ ] Atualizar status do imÃ³vel.
-- [ ] Emitir `PrimarySaleCancelled`.
-- [ ] Emitir `ListingStatusUpdated`.
-- [ ] Atualizar marketplace no frontend.
+- [x] Implementar `cancelPrimarySaleListing`.
+- [x] Usar `nonReentrant`.
+- [x] Validar `listingExists`.
+- [x] Validar listing ativo.
+- [x] Validar `msg.sender == seller`.
+- [x] Mudar listing para `Cancelled`.
+- [x] Atualizar `activeListingsCountByProperty`.
+- [x] Atualizar `activeEscrowedAmountByProperty`.
+- [x] Devolver tokens livres para seller.
+- [x] Atualizar status do imÃ³vel.
+- [x] Emitir `PrimarySaleCancelled`.
+- [x] Emitir `ListingStatusUpdated`.
+- [x] Atualizar marketplace no frontend.
 
 #### CritÃ©rio de aceite
 
-- [ ] Pessoa A cancela oferta ativa.
-- [ ] Tokens em escrow voltam para Pessoa A.
-- [ ] Listing vira `Cancelled`.
-- [ ] Status volta para `Tokenized` se nÃ£o houver ofertas ativas.
+- [x] Pessoa A cancela oferta ativa.
+- [x] Tokens em escrow voltam para Pessoa A.
+- [x] Listing vira `Cancelled`.
+- [x] Status volta para `Tokenized` se nÃ£o houver ofertas ativas.
 
 #### Prioridade
 

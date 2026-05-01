@@ -5,6 +5,7 @@ import { buildSavedPropertyRecord } from "@/offchain/property-draft";
 import type {
   FiatRatesSnapshot,
   PropertyDraftInput,
+  PropertyPrimarySaleCancellationInput,
   PropertyPrimarySaleListingInput,
   PropertyPrimarySalePurchaseInput,
   PropertyMockVerificationInput,
@@ -323,6 +324,72 @@ export async function savePropertyPrimarySalePurchase(
     BigInt(input.priceWei)
   ).toString();
   property.onchainRegistration.buyerBalances = buyerBalances;
+  property.onchainRegistration.primarySaleListings = updatedListings;
+
+  await db.write();
+
+  return property;
+}
+
+export async function savePropertyPrimarySaleCancellation(
+  input: PropertyPrimarySaleCancellationInput,
+) {
+  const db = await getDb();
+  const property = db.data.properties.find(
+    (record) => record.localPropertyId === input.localPropertyId,
+  );
+
+  if (!property) {
+    throw new Error("Property draft not found.");
+  }
+
+  if (!property.onchainRegistration) {
+    throw new Error("Property draft is not registered on-chain.");
+  }
+
+  if (property.onchainRegistration.propertyId !== input.propertyId) {
+    throw new Error("On-chain property id does not match the saved draft.");
+  }
+
+  const listings = property.onchainRegistration.primarySaleListings;
+  if (!listings?.length) {
+    throw new Error("Primary sale listing is not saved locally.");
+  }
+
+  const listingIndex = listings.findIndex(
+    (listing) => listing.listingId === input.listingId,
+  );
+  if (listingIndex === -1) {
+    throw new Error("Primary sale listing is not saved locally.");
+  }
+
+  const existingListing = listings[listingIndex];
+  if (existingListing.status !== "Active") {
+    throw new Error("Primary sale listing is not active locally.");
+  }
+  if (existingListing.amount !== input.amount) {
+    throw new Error("Primary sale cancellation does not match the saved listing.");
+  }
+
+  const updatedListings = [...listings];
+  updatedListings[listingIndex] = {
+    ...existingListing,
+    status: "Cancelled",
+  };
+
+  const activeEscrowedAmount = (
+    BigInt(property.onchainRegistration.activeEscrowedAmount ?? "0") -
+    BigInt(input.amount)
+  ).toString();
+  const activeListingsCount = (
+    BigInt(property.onchainRegistration.activeListingsCount ?? "0") - BigInt(1)
+  ).toString();
+  const nextStatus = activeListingsCount !== "0" ? "ActiveSale" : "Tokenized";
+
+  property.onchainRegistration.status = nextStatus;
+  property.onchainRegistration.activeEscrowedAmount = activeEscrowedAmount;
+  property.onchainRegistration.activeListingsCount = activeListingsCount;
+  property.onchainRegistration.totalFreeValueSold ??= "0";
   property.onchainRegistration.primarySaleListings = updatedListings;
 
   await db.write();

@@ -33,6 +33,7 @@ contract PrimaryValueSale {
     error SellerCannotBuyOwnListing();
     error EthTransferFailed();
     error Reentrancy();
+    error SellerOnly();
 
     event PrimarySaleListed(
         uint256 indexed listingId,
@@ -63,6 +64,12 @@ contract PrimaryValueSale {
         uint256 indexed listingId,
         address indexed seller,
         uint256 amountWei
+    );
+    event PrimarySaleCancelled(
+        uint256 indexed listingId,
+        uint256 indexed propertyId,
+        address indexed seller,
+        uint256 amount
     );
 
     constructor(address registry_) {
@@ -264,6 +271,83 @@ contract PrimaryValueSale {
             listing.priceWei
         );
         emit SellerPaid(listingId, listing.seller, listing.priceWei);
+    }
+
+    function cancelPrimarySaleListing(uint256 listingId) external nonReentrant {
+        if (!listingExists[listingId]) {
+            revert ListingNotFound();
+        }
+
+        ProtocolTypes.PrimarySaleListing storage listing = listings[listingId];
+        if (listing.status != ProtocolTypes.SaleStatus.Active) {
+            revert ListingNotActive();
+        }
+
+        if (msg.sender != listing.seller) {
+            revert SellerOnly();
+        }
+
+        PropertyRegistry registryContract = PropertyRegistry(registry);
+        if (!registryContract.propertyExists(listing.propertyId)) {
+            revert PropertyNotFound();
+        }
+
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            address valueTokenAddress,
+            ProtocolTypes.PropertyStatus propertyStatus
+        ) = registryContract.properties(listing.propertyId);
+
+        if (
+            propertyStatus != ProtocolTypes.PropertyStatus.ActiveSale &&
+            propertyStatus != ProtocolTypes.PropertyStatus.Tokenized
+        ) {
+            revert InvalidPropertyStatus();
+        }
+
+        ProtocolTypes.SaleStatus previousStatus = listing.status;
+        listing.status = ProtocolTypes.SaleStatus.Cancelled;
+
+        unchecked {
+            activeListingsCountByProperty[listing.propertyId] -= 1;
+            activeEscrowedAmountByProperty[listing.propertyId] -= listing.amount;
+        }
+
+        ProtocolTypes.PropertyStatus nextPropertyStatus;
+        if (activeListingsCountByProperty[listing.propertyId] > 0) {
+            nextPropertyStatus = ProtocolTypes.PropertyStatus.ActiveSale;
+        } else {
+            nextPropertyStatus = ProtocolTypes.PropertyStatus.Tokenized;
+        }
+
+        registryContract.syncPropertySaleStatus(listing.propertyId, nextPropertyStatus);
+
+        emit ListingStatusUpdated(
+            listingId,
+            previousStatus,
+            ProtocolTypes.SaleStatus.Cancelled
+        );
+
+        PropertyValueToken(valueTokenAddress).operatorTransfer(
+            address(this),
+            listing.seller,
+            listing.amount
+        );
+
+        emit PrimarySaleCancelled(
+            listingId,
+            listing.propertyId,
+            listing.seller,
+            listing.amount
+        );
     }
 
     function getListingIds() external view returns (uint256[] memory) {

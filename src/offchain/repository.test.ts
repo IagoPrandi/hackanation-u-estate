@@ -9,6 +9,7 @@ import {
   listPropertyDrafts,
   savePropertyMockVerification,
   saveOnchainPropertyRegistration,
+  savePropertyPrimarySaleCancellation,
   savePropertyPrimarySaleListing,
   savePropertyPrimarySalePurchase,
   savePropertyTokenization,
@@ -336,6 +337,73 @@ describe("property drafts", () => {
         buyerWallet: "0x0000000000000000000000000000000000000B0B",
         purchaseTxHash:
           "0x5555555555555555555555555555555555555555555555555555555555555555",
+      }),
+    ]);
+  });
+
+  it("persists primary sale cancellations after on-chain completion", async () => {
+    const record = await createPropertyDraft(createInput());
+
+    await saveOnchainPropertyRegistration({
+      kind: "registration",
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      txHash:
+        "0x1111111111111111111111111111111111111111111111111111111111111111",
+    });
+
+    await savePropertyMockVerification({
+      kind: "mockVerification",
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      txHash:
+        "0x2222222222222222222222222222222222222222222222222222222222222222",
+    });
+
+    await savePropertyTokenization({
+      kind: "tokenization",
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      txHash:
+        "0x3333333333333333333333333333333333333333333333333333333333333333",
+      valueTokenAddress: "0x0000000000000000000000000000000000000ABC",
+      usufructTokenId: "1",
+      linkedValueUnits: "200000",
+      freeValueUnits: "800000",
+    });
+
+    await savePropertyPrimarySaleListing({
+      kind: "primarySaleListing",
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      listingId: "1",
+      txHash:
+        "0x4444444444444444444444444444444444444444444444444444444444444444",
+      amount: "300000",
+      priceWei: "3000000000000000000",
+    });
+
+    const updatedRecord = await savePropertyPrimarySaleCancellation({
+      kind: "primarySaleCancellation",
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      listingId: "1",
+      txHash:
+        "0x6666666666666666666666666666666666666666666666666666666666666666",
+      amount: "300000",
+    });
+
+    expect(updatedRecord.onchainRegistration).toMatchObject({
+      propertyId: "1",
+      status: "Tokenized",
+      activeListingsCount: "0",
+      activeEscrowedAmount: "0",
+      totalFreeValueSold: "0",
+    });
+    expect(updatedRecord.onchainRegistration?.primarySaleListings).toEqual([
+      expect.objectContaining({
+        listingId: "1",
+        status: "Cancelled",
       }),
     ]);
   });

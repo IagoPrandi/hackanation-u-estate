@@ -182,12 +182,34 @@ export const propertyPrimarySalePurchaseInputSchema = z.object({
     .regex(/^[1-9]\d*$/, "Purchase price must be a positive integer string."),
 });
 
+export const propertyPrimarySaleCancellationInputSchema = z.object({
+  kind: z.literal("primarySaleCancellation"),
+  localPropertyId: z.uuid(),
+  propertyId: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Property id must be a positive integer string."),
+  listingId: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Listing id must be a positive integer string."),
+  txHash: z
+    .string()
+    .trim()
+    .refine((value) => isHash(value), "Transaction hash must be a valid hash."),
+  amount: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Cancellation amount must be a positive integer string."),
+});
+
 export const propertyOnchainSyncSchema = z.discriminatedUnion("kind", [
   propertyOnchainRegistrationInputSchema,
   propertyMockVerificationInputSchema,
   propertyTokenizationInputSchema,
   propertyPrimarySaleListingInputSchema,
   propertyPrimarySalePurchaseInputSchema,
+  propertyPrimarySaleCancellationInputSchema,
 ]);
 
 export type PropertyDraftInput = z.infer<typeof propertyIntakeSchema>;
@@ -207,6 +229,9 @@ export type PropertyPrimarySaleListingInput = z.infer<
 >;
 export type PropertyPrimarySalePurchaseInput = z.infer<
   typeof propertyPrimarySalePurchaseInputSchema
+>;
+export type PropertyPrimarySaleCancellationInput = z.infer<
+  typeof propertyPrimarySaleCancellationInputSchema
 >;
 export type PropertyOnchainSyncInput = z.infer<typeof propertyOnchainSyncSchema>;
 
