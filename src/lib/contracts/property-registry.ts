@@ -47,6 +47,13 @@ export const propertyRegistryAbi = [
     outputs: [{ name: "valueToken", type: "address" }],
   },
   {
+    type: "function",
+    stateMutability: "view",
+    name: "primaryValueSale",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
     type: "event",
     anonymous: false,
     name: "PropertyRegistered",

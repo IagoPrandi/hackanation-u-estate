@@ -542,6 +542,154 @@ contract PropertyRegistryTest {
         valueToken.approve(BOB, 1);
     }
 
+    function testCreatePrimarySaleListingEscrowsFreeValueAndMarksActiveSale()
+        external
+    {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        address valueTokenAddress = registry.tokenizeProperty(propertyId);
+
+        vm.prank(ALICE);
+        uint256 listingId = sale.createPrimarySaleListing(propertyId, 300_000);
+
+        require(listingId == 1, "listing id mismatch");
+        require(sale.nextListingId() == 2, "next listing id mismatch");
+        require(sale.listingExists(listingId), "listing exists mismatch");
+        require(
+            sale.activeListingsCountByProperty(propertyId) == 1,
+            "active listing count mismatch"
+        );
+        require(
+            sale.activeEscrowedAmountByProperty(propertyId) == 300_000,
+            "active escrowed amount mismatch"
+        );
+        require(
+            sale.totalFreeValueSoldByProperty(propertyId) == 0,
+            "sold amount mismatch"
+        );
+
+        {
+            (
+                uint256 storedListingId,
+                uint256 storedPropertyId,
+                address seller,
+                uint256 amount,
+                uint256 priceWei,
+                ProtocolTypes.SaleStatus saleStatus
+            ) = sale.listings(listingId);
+
+            require(storedListingId == listingId, "stored listing id mismatch");
+            require(storedPropertyId == propertyId, "stored property mismatch");
+            require(seller == ALICE, "seller mismatch");
+            require(amount == 300_000, "listing amount mismatch");
+            require(priceWei == 3 ether, "listing price mismatch");
+            require(
+                uint8(saleStatus) == uint8(ProtocolTypes.SaleStatus.Active),
+                "listing status mismatch"
+            );
+        }
+
+        uint256[] memory allListingIds = sale.getListingIds();
+        uint256[] memory propertyListingIds = sale.getListingsByProperty(
+            propertyId
+        );
+        require(allListingIds.length == 1, "global listing count mismatch");
+        require(allListingIds[0] == listingId, "global listing id mismatch");
+        require(
+            propertyListingIds.length == 1,
+            "property listing count mismatch"
+        );
+        require(
+            propertyListingIds[0] == listingId,
+            "property listing id mismatch"
+        );
+
+        PropertyValueToken valueToken = PropertyValueToken(valueTokenAddress);
+        require(
+            valueToken.balanceOf(ALICE) == 500_000,
+            "seller liquid balance mismatch"
+        );
+        require(
+            valueToken.balanceOf(address(sale)) == 300_000,
+            "sale escrow balance mismatch"
+        );
+
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ProtocolTypes.PropertyStatus status
+        ) = registry.properties(propertyId);
+        require(
+            uint8(status) == uint8(ProtocolTypes.PropertyStatus.ActiveSale),
+            "property status mismatch"
+        );
+    }
+
+    function testCreatePrimarySaleListingRejectsUnauthorizedSeller() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        registry.tokenizeProperty(propertyId);
+
+        vm.prank(BOB);
+        vm.expectRevert(
+            abi.encodeWithSelector(PrimaryValueSale.Unauthorized.selector)
+        );
+        sale.createPrimarySaleListing(propertyId, 300_000);
+    }
+
+    function testCreatePrimarySaleListingRejectsWrongPropertyStatus() external {
+        vm.prank(ALICE);
+        uint256 propertyId = registry.registerProperty(
+            10 ether,
+            2_000,
+            METADATA_HASH,
+            DOCUMENTS_HASH,
+            LOCATION_HASH
+        );
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PrimaryValueSale.InvalidPropertyStatus.selector)
+        );
+        sale.createPrimarySaleListing(propertyId, 300_000);
+    }
+
+    function testCreatePrimarySaleListingRejectsZeroAmount() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        registry.tokenizeProperty(propertyId);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PrimaryValueSale.InvalidAmount.selector)
+        );
+        sale.createPrimarySaleListing(propertyId, 0);
+    }
+
+    function testCreatePrimarySaleListingRejectsInsufficientBalance() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        registry.tokenizeProperty(propertyId);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PrimaryValueSale.InsufficientBalance.selector)
+        );
+        sale.createPrimarySaleListing(propertyId, 900_000);
+    }
+
     function _registerAndVerifyProperty() internal returns (uint256 propertyId) {
         vm.prank(ALICE);
         propertyId = registry.registerProperty(

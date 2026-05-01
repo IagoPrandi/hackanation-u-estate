@@ -7,10 +7,16 @@ import {
   useMemo,
   useState,
 } from "react";
-import { parseEventLogs, type Hex } from "viem";
+import { isAddress, parseEventLogs, type Address, type Hex } from "viem";
 import { sepolia } from "wagmi/chains";
-import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useReadContract,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from "wagmi";
 import { WalletPanel } from "@/components/wallet-panel";
+import { primaryValueSaleAbi } from "@/lib/contracts/primary-value-sale";
 import {
   propertyRegistryAbi,
   propertyRegistryAddress,
@@ -83,9 +89,23 @@ export function PropertyWorkbench({
     useWriteContract();
   const { writeContractAsync: writeTokenizationAsync, isPending: isSubmittingTokenization } =
     useWriteContract();
+  const {
+    writeContractAsync: writePrimarySaleListingAsync,
+    isPending: isSubmittingPrimarySaleListing,
+  } = useWriteContract();
+  const { data: configuredPrimaryValueSaleAddress } = useReadContract({
+    address: propertyRegistryAddress,
+    abi: propertyRegistryAbi,
+    functionName: "primaryValueSale",
+    query: {
+      enabled: Boolean(propertyRegistryAddress),
+    },
+  });
   const [draftLocalId, setDraftLocalId] = useState(() => crypto.randomUUID());
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [listedUnits] = useState("300000");
+  const [saleAmountByLocalPropertyId, setSaleAmountByLocalPropertyId] =
+    useState<Record<string, string>>({});
   const [properties, setProperties] =
     useState<SavedPropertyRecord[]>(initialProperties);
   const [lastSaved, setLastSaved] = useState<SavedPropertyRecord | null>(
@@ -137,6 +157,19 @@ export function PropertyWorkbench({
   const [tokenizationNotice, setTokenizationNotice] = useState<string | null>(
     null,
   );
+  const [listingLocalPropertyId, setListingLocalPropertyId] = useState<
+    string | null
+  >(null);
+  const [submittedListingHash, setSubmittedListingHash] = useState<Hex | null>(
+    null,
+  );
+  const [processedListingHash, setProcessedListingHash] = useState<Hex | null>(
+    null,
+  );
+  const [listingErrorMessage, setListingErrorMessage] = useState<string | null>(
+    null,
+  );
+  const [listingNotice, setListingNotice] = useState<string | null>(null);
   const {
     data: registrationReceipt,
     error: registrationReceiptError,
@@ -168,6 +201,17 @@ export function PropertyWorkbench({
     hash: submittedTokenizationHash ?? undefined,
     query: {
       enabled: Boolean(submittedTokenizationHash),
+    },
+  });
+  const {
+    data: listingReceipt,
+    error: listingReceiptError,
+    isLoading: isConfirmingListing,
+  } = useWaitForTransactionReceipt({
+    chainId: sepolia.id,
+    hash: submittedListingHash ?? undefined,
+    query: {
+      enabled: Boolean(submittedListingHash),
     },
   });
 
@@ -478,6 +522,96 @@ export function PropertyWorkbench({
     tokenizingLocalPropertyId,
   ]);
 
+  useEffect(() => {
+    if (
+      !listingReceipt ||
+      !listingLocalPropertyId ||
+      processedListingHash === listingReceipt.transactionHash
+    ) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        setProcessedListingHash(listingReceipt.transactionHash);
+
+        const [primarySaleListedLog] = parseEventLogs({
+          abi: primaryValueSaleAbi,
+          eventName: "PrimarySaleListed",
+          logs: listingReceipt.logs,
+          strict: true,
+        });
+
+        if (!primarySaleListedLog) {
+          throw new Error(
+            "Transaction confirmed, but PrimarySaleListed event was not found.",
+          );
+        }
+
+        const response = await fetch("/api/properties", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            kind: "primarySaleListing",
+            localPropertyId: listingLocalPropertyId,
+            propertyId: primarySaleListedLog.args.propertyId.toString(),
+            listingId: primarySaleListedLog.args.listingId.toString(),
+            txHash: listingReceipt.transactionHash,
+            amount: primarySaleListedLog.args.amount.toString(),
+            priceWei: primarySaleListedLog.args.priceWei.toString(),
+          }),
+        });
+
+        const payload = (await response.json()) as
+          | { record: SavedPropertyRecord }
+          | { error: string };
+
+        if (!response.ok || !("record" in payload)) {
+          throw new Error(
+            "error" in payload
+              ? payload.error
+              : "Could not persist the primary sale listing locally.",
+          );
+        }
+
+        setProperties((current) =>
+          current.map((property) =>
+            property.localPropertyId === payload.record.localPropertyId
+              ? payload.record
+              : property,
+          ),
+        );
+        setLastSaved((current) =>
+          current?.localPropertyId === payload.record.localPropertyId
+            ? payload.record
+            : current,
+        );
+        setListingNotice(
+          `Primary sale listing #${primarySaleListedLog.args.listingId.toString()} created on-chain.`,
+        );
+        setListingErrorMessage(null);
+      } catch (error) {
+        setListingErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Primary sale listing persistence failed.",
+        );
+        setListingNotice(null);
+      } finally {
+        setListingLocalPropertyId(null);
+      }
+    })();
+  }, [listingLocalPropertyId, listingReceipt, processedListingHash]);
+
+  const primaryValueSaleAddress =
+    configuredPrimaryValueSaleAddress &&
+    isAddress(configuredPrimaryValueSaleAddress) &&
+    configuredPrimaryValueSaleAddress !==
+      "0x0000000000000000000000000000000000000000"
+      ? (configuredPrimaryValueSaleAddress as Address)
+      : undefined;
   const registeredPropertiesCount = properties.filter(
     (property) => property.onchainRegistration,
   ).length;
@@ -487,12 +621,17 @@ export function PropertyWorkbench({
   const tokenizedPropertiesCount = properties.filter(
     (property) => property.onchainRegistration?.status === "Tokenized",
   ).length;
+  const activeSalePropertiesCount = properties.filter(
+    (property) => property.onchainRegistration?.status === "ActiveSale",
+  ).length;
   const activeRegistrationErrorMessage =
     registrationReceiptError?.message ?? registrationErrorMessage;
   const activeVerificationErrorMessage =
     verificationReceiptError?.message ?? verificationErrorMessage;
   const activeTokenizationErrorMessage =
     tokenizationReceiptError?.message ?? tokenizationErrorMessage;
+  const activeListingErrorMessage =
+    listingReceiptError?.message ?? listingErrorMessage;
 
   const marketValuePreview = useMemo(() => {
     try {
@@ -574,6 +713,13 @@ export function PropertyWorkbench({
     value: FormState[Key],
   ) => {
     setFormState((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateSaleAmount = (localPropertyId: string, value: string) => {
+    setSaleAmountByLocalPropertyId((current) => ({
+      ...current,
+      [localPropertyId]: value,
+    }));
   };
 
   const updateDocument = <Key extends keyof MockDocumentInput>(
@@ -861,20 +1007,121 @@ export function PropertyWorkbench({
     }
   };
 
+  const handleCreatePrimarySaleListing = async (
+    property: SavedPropertyRecord,
+    amount: string,
+  ) => {
+    if (!address || !isConnected) {
+      setListingErrorMessage(
+        "Connect a wallet before creating a primary sale listing.",
+      );
+      return;
+    }
+
+    if (chainId !== sepolia.id) {
+      setListingErrorMessage("Switch the wallet to Sepolia first.");
+      return;
+    }
+
+    if (!propertyRegistryAddress) {
+      setListingErrorMessage(
+        "NEXT_PUBLIC_PROPERTY_REGISTRY_ADDRESS is not configured.",
+      );
+      return;
+    }
+
+    if (!primaryValueSaleAddress) {
+      setListingErrorMessage(
+        "PrimaryValueSale is not available from the registry configuration.",
+      );
+      return;
+    }
+
+    if (!property.onchainRegistration) {
+      setListingErrorMessage(
+        "Register the property on-chain before creating a primary sale listing.",
+      );
+      return;
+    }
+
+    if (
+      property.onchainRegistration.status !== "Tokenized" &&
+      property.onchainRegistration.status !== "ActiveSale"
+    ) {
+      setListingErrorMessage(
+        "Only tokenized properties can open a primary sale listing.",
+      );
+      return;
+    }
+
+    if (property.ownerWallet.toLowerCase() !== address.toLowerCase()) {
+      setListingErrorMessage(
+        "Only the property owner can create a primary sale listing.",
+      );
+      return;
+    }
+
+    if (!/^[1-9]\d*$/.test(amount)) {
+      setListingErrorMessage(
+        "Listing amount must be a positive whole-number amount.",
+      );
+      return;
+    }
+
+    const availableFreeBalance =
+      BigInt(property.onchainRegistration.freeValueUnits ?? "0") -
+      BigInt(property.onchainRegistration.activeEscrowedAmount ?? "0");
+    const requestedAmount = BigInt(amount);
+
+    if (requestedAmount > availableFreeBalance) {
+      setListingErrorMessage(
+        "Listing amount exceeds the owner free-value balance available outside escrow.",
+      );
+      return;
+    }
+
+    setListingErrorMessage(null);
+    setListingNotice(null);
+    setListingLocalPropertyId(property.localPropertyId);
+
+    try {
+      const txHash = await writePrimarySaleListingAsync({
+        address: primaryValueSaleAddress,
+        abi: primaryValueSaleAbi,
+        functionName: "createPrimarySaleListing",
+        args: [BigInt(property.onchainRegistration.propertyId), requestedAmount],
+        chainId: sepolia.id,
+      });
+
+      setSubmittedListingHash(txHash);
+      setProcessedListingHash(null);
+      setListingNotice(
+        `Primary sale tx submitted: ${shortenHash(txHash)}. Waiting for confirmation.`,
+      );
+    } catch (error) {
+      setListingLocalPropertyId(null);
+      setListingErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not submit the primary sale listing transaction.",
+      );
+    }
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <section className="glass-panel overflow-hidden rounded-[2rem]">
         <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:px-10 lg:py-10">
           <div className="space-y-6">
             <div className="space-y-3">
-              <p className="soft-label">Milestone 0.6</p>
+              <p className="soft-label">Milestone 0.8</p>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
-                Tokenize the verified property into usufruct and free value.
+                Open the primary sale for the free-value token.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                The flow now carries each draft from registration into mock verification and
-                then into on-chain tokenization with a non-transferable usufruct NFT plus a
-                restricted free-value ERC-20.
+                The owner can define how much free value to list, preview the equivalent
+                economic percentage and fiat price, and escrow only the free-value ERC-20
+                while the usufruct NFT and linked value stay untouched.
               </p>
             </div>
 
@@ -909,6 +1156,10 @@ export function PropertyWorkbench({
                 label="Tokenized"
                 value={`${tokenizedPropertiesCount}/${registeredPropertiesCount}`}
               />
+              <StatCard
+                label="Active sales"
+                value={`${activeSalePropertiesCount}/${registeredPropertiesCount}`}
+              />
             </div>
 
             {fiatErrorMessage ? (
@@ -927,6 +1178,12 @@ export function PropertyWorkbench({
               <Notice tone="warning">
                 Set `NEXT_PUBLIC_PROPERTY_REGISTRY_ADDRESS` to enable on-chain
                 registration and tokenization from the dashboard.
+              </Notice>
+            ) : null}
+
+            {!primaryValueSaleAddress && propertyRegistryAddress ? (
+              <Notice tone="warning">
+                The registry does not expose a configured `PrimaryValueSale` address yet.
               </Notice>
             ) : null}
 
@@ -958,6 +1215,16 @@ export function PropertyWorkbench({
 
             {activeTokenizationErrorMessage ? (
               <Notice tone="danger">{activeTokenizationErrorMessage}</Notice>
+            ) : null}
+
+            {listingNotice && !activeListingErrorMessage ? (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900">
+                {listingNotice}
+              </div>
+            ) : null}
+
+            {activeListingErrorMessage ? (
+              <Notice tone="danger">{activeListingErrorMessage}</Notice>
             ) : null}
           </div>
 
@@ -1350,6 +1617,24 @@ export function PropertyWorkbench({
                           </span>
                         </p>
                       ) : null}
+                      {lastSaved.onchainRegistration.activeListingsCount ? (
+                        <p>
+                          <span className="font-semibold text-foreground">
+                            Active listings:
+                          </span>{" "}
+                          {lastSaved.onchainRegistration.activeListingsCount}
+                        </p>
+                      ) : null}
+                      {lastSaved.onchainRegistration.activeEscrowedAmount ? (
+                        <p>
+                          <span className="font-semibold text-foreground">
+                            Escrowed units:
+                          </span>{" "}
+                          <span className="mono">
+                            {lastSaved.onchainRegistration.activeEscrowedAmount}
+                          </span>
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}
@@ -1382,6 +1667,101 @@ export function PropertyWorkbench({
                     property.marketValueWei,
                     8,
                   );
+                  const registration = property.onchainRegistration;
+                  const isTokenized =
+                    registration?.status === "Tokenized" ||
+                    registration?.status === "ActiveSale";
+                  const linkedValueUnits =
+                    registration?.linkedValueUnits ??
+                    Math.floor(
+                      (Number(TOTAL_VALUE_UNITS) * property.linkedValueBps) / 10_000,
+                    ).toString();
+                  const freeValueUnits =
+                    registration?.freeValueUnits ??
+                    (Number(TOTAL_VALUE_UNITS) - Number(linkedValueUnits)).toString();
+                  const linkedPercent = divideDecimalStrings(
+                    multiplyDecimalStrings(linkedValueUnits, "100", 4),
+                    TOTAL_VALUE_UNITS,
+                    4,
+                  );
+                  const freePercent = divideDecimalStrings(
+                    multiplyDecimalStrings(freeValueUnits, "100", 4),
+                    TOTAL_VALUE_UNITS,
+                    4,
+                  );
+                  const linkedValueEth = multiplyDecimalStrings(
+                    marketValueEth,
+                    divideDecimalStrings(linkedValueUnits, TOTAL_VALUE_UNITS, 8),
+                    8,
+                  );
+                  const totalFreeValueSold =
+                    registration?.totalFreeValueSold ?? "0";
+                  const activeEscrowedAmount =
+                    registration?.activeEscrowedAmount ?? "0";
+                  const ownerRetainedFreeUnits = isTokenized
+                    ? (
+                        BigInt(freeValueUnits) - BigInt(totalFreeValueSold)
+                      ).toString()
+                    : "0";
+                  const ownerFreeBalanceUnits = isTokenized
+                    ? (
+                        BigInt(ownerRetainedFreeUnits) - BigInt(activeEscrowedAmount)
+                      ).toString()
+                    : "0";
+                  const ownerFreeBalanceEth = isTokenized
+                    ? multiplyDecimalStrings(
+                        marketValueEth,
+                        divideDecimalStrings(ownerFreeBalanceUnits, TOTAL_VALUE_UNITS, 8),
+                        8,
+                      )
+                    : "0";
+                  const ownerTotalEconomicUnits = isTokenized
+                    ? (
+                        BigInt(linkedValueUnits) + BigInt(ownerRetainedFreeUnits)
+                      ).toString()
+                    : "0";
+                  const ownerTotalEconomicPercent = isTokenized
+                    ? divideDecimalStrings(
+                        multiplyDecimalStrings(ownerTotalEconomicUnits, "100", 4),
+                        TOTAL_VALUE_UNITS,
+                        4,
+                      )
+                    : "0";
+                  const ownerTotalEconomicEth = isTokenized
+                    ? multiplyDecimalStrings(
+                        marketValueEth,
+                        divideDecimalStrings(
+                          ownerTotalEconomicUnits,
+                          TOTAL_VALUE_UNITS,
+                          8,
+                        ),
+                        8,
+                      )
+                    : "0";
+                  const activeListings =
+                    registration?.primarySaleListings?.filter(
+                      (listing) => listing.status === "Active",
+                    ) ?? [];
+                  const saleAmount =
+                    saleAmountByLocalPropertyId[property.localPropertyId] ??
+                    listedUnits;
+                  const saleAmountIsValid = /^[1-9]\d*$/.test(saleAmount);
+                  const saleListedPercent = saleAmountIsValid
+                    ? divideDecimalStrings(
+                        multiplyDecimalStrings(saleAmount, "100", 4),
+                        TOTAL_VALUE_UNITS,
+                        4,
+                      )
+                    : "0";
+                  const salePriceEth = saleAmountIsValid
+                    ? multiplyDecimalStrings(
+                        marketValueEth,
+                        divideDecimalStrings(saleAmount, TOTAL_VALUE_UNITS, 8),
+                        8,
+                      )
+                    : "0";
+                  const isCurrentListing =
+                    listingLocalPropertyId === property.localPropertyId;
                   const isDraftOwner =
                     Boolean(address) &&
                     property.ownerWallet.toLowerCase() === address?.toLowerCase();
@@ -1399,7 +1779,7 @@ export function PropertyWorkbench({
                     Boolean(property.onchainRegistration) ||
                     isRegisteringOnchain ||
                     isConfirmingRegistration;
-                  const registerButtonLabel = property.onchainRegistration
+                  const registerButtonLabel = registration
                     ? "Registered on-chain"
                     : isCurrentRegistration && isRegisteringOnchain
                       ? "Submitting transaction..."
@@ -1411,15 +1791,16 @@ export function PropertyWorkbench({
                     !isDraftOwner ||
                     chainId !== sepolia.id ||
                     !propertyRegistryAddress ||
-                    !property.onchainRegistration ||
-                    property.onchainRegistration.status !== "PendingMockVerification" ||
+                    !registration ||
+                    registration.status !== "PendingMockVerification" ||
                     isSubmittingMockVerification ||
                     isConfirmingVerification;
                   const verifyButtonLabel =
-                    property.onchainRegistration?.status === "Tokenized"
+                    registration?.status === "Tokenized" ||
+                    registration?.status === "ActiveSale"
                       ? "Already tokenized"
-                      : property.onchainRegistration?.status === "MockVerified"
-                      ? "Mock verified"
+                      : registration?.status === "MockVerified"
+                        ? "Mock verified"
                       : isCurrentVerification && isSubmittingMockVerification
                         ? "Submitting verification..."
                         : isCurrentVerification && isConfirmingVerification
@@ -1430,18 +1811,38 @@ export function PropertyWorkbench({
                     !isDraftOwner ||
                     chainId !== sepolia.id ||
                     !propertyRegistryAddress ||
-                    !property.onchainRegistration ||
-                    property.onchainRegistration.status !== "MockVerified" ||
+                    !registration ||
+                    registration.status !== "MockVerified" ||
                     isSubmittingTokenization ||
                     isConfirmingTokenization;
                   const tokenizeButtonLabel =
-                    property.onchainRegistration?.status === "Tokenized"
+                    registration?.status === "Tokenized" ||
+                    registration?.status === "ActiveSale"
                       ? "Tokenized"
                       : isCurrentTokenization && isSubmittingTokenization
                         ? "Submitting tokenization..."
                         : isCurrentTokenization && isConfirmingTokenization
                           ? "Waiting for tokenization..."
                           : "Tokenize property";
+                  const createListingButtonDisabled =
+                    !isConnected ||
+                    !isDraftOwner ||
+                    chainId !== sepolia.id ||
+                    !primaryValueSaleAddress ||
+                    !registration ||
+                    (registration.status !== "Tokenized" &&
+                      registration.status !== "ActiveSale") ||
+                    !saleAmountIsValid ||
+                    BigInt(saleAmountIsValid ? saleAmount : "0") >
+                      BigInt(ownerFreeBalanceUnits) ||
+                    isSubmittingPrimarySaleListing ||
+                    isConfirmingListing;
+                  const createListingButtonLabel =
+                    isCurrentListing && isSubmittingPrimarySaleListing
+                      ? "Submitting listing..."
+                      : isCurrentListing && isConfirmingListing
+                        ? "Waiting for listing..."
+                        : "Create primary sale offer";
 
                   return (
                     <article
@@ -1648,19 +2049,19 @@ export function PropertyWorkbench({
                             ) : null}
                           </div>
 
-                          {property.onchainRegistration?.status === "Tokenized" ? (
+                          {isTokenized ? (
                             <div className="mt-4 grid gap-3 text-sm text-muted md:grid-cols-2">
                               <div>
                                 <p className="soft-label">Usufruct token id</p>
                                 <p className="mono mt-1 text-foreground">
-                                  {property.onchainRegistration.usufructTokenId}
+                                  {registration?.usufructTokenId}
                                 </p>
                               </div>
                               <div>
                                 <p className="soft-label">Free value units</p>
                                 <p className="mono mt-1 text-foreground">
                                   {formatDecimalForDisplay(
-                                    property.onchainRegistration.freeValueUnits ?? "0",
+                                    registration?.freeValueUnits ?? "0",
                                     0,
                                   )}
                                 </p>
@@ -1669,7 +2070,7 @@ export function PropertyWorkbench({
                                 <p className="soft-label">Linked value units</p>
                                 <p className="mono mt-1 text-foreground">
                                   {formatDecimalForDisplay(
-                                    property.onchainRegistration.linkedValueUnits ?? "0",
+                                    registration?.linkedValueUnits ?? "0",
                                     0,
                                   )}
                                 </p>
@@ -1705,12 +2106,375 @@ export function PropertyWorkbench({
                               </span>
                             ) : null}
 
-                            {property.onchainRegistration?.status === "Tokenized" ? (
+                            {isTokenized ? (
                               <span className="text-sm text-muted">
                                 Tokenization is complete. The owner now holds the usufruct NFT and
                                 the free-value token supply.
                               </span>
                             ) : null}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 rounded-3xl border border-line bg-stone-50/80 p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="soft-label">Tokenized property dashboard</p>
+                              <p className="mt-2 text-sm text-muted">
+                                Separate the right of use from the transferable economic value.
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-stone-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-stone-50">
+                              {registration?.status ?? "Draft"}
+                            </span>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                            <DashboardMetric
+                              label="Market value"
+                              value={formatEthLabel(marketValueEth)}
+                              detail={renderFiatSummary(marketValueEth, fiatRates)}
+                            />
+                            <DashboardMetric
+                              label="Owner"
+                              value={shorten(property.ownerWallet)}
+                              detail={property.ownerWallet}
+                              mono
+                            />
+                            <DashboardMetric
+                              label="Off-chain address"
+                              value={`${property.address.street}, ${property.address.number}`}
+                              detail={`${property.address.city}, ${property.address.state}, ${property.address.country} ${property.address.postalCode}`}
+                            />
+                            <DashboardMetric
+                              label="Off-chain location"
+                              value={`${property.location.lat}, ${property.location.lng}`}
+                              detail="Persisted from the intake metadata."
+                              mono
+                            />
+                          </div>
+
+                          <div className="mt-4 grid gap-3 md:grid-cols-3">
+                            <HashRow label="Property metadata hash" value={property.metadataHash} />
+                            <HashRow label="Documents metadata hash" value={property.documentsHash} />
+                            <HashRow label="Location metadata hash" value={property.locationHash} />
+                          </div>
+
+                          <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                            <div className="rounded-3xl border border-line bg-white/80 p-4">
+                              <p className="soft-label">Usufruct and linked value</p>
+                              <h3 className="mt-2 text-lg font-semibold text-foreground">
+                                Non-transferable right of use
+                              </h3>
+                              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                <DashboardMetric
+                                  label="Usufruct NFT"
+                                  value={registration?.usufructTokenId ?? "Not minted yet"}
+                                  detail={
+                                    isTokenized
+                                      ? `Token id matches property id ${registration?.propertyId}.`
+                                      : "Minted after tokenization."
+                                  }
+                                  mono={Boolean(registration?.usufructTokenId)}
+                                />
+                                <DashboardMetric
+                                  label="Usufruct holder"
+                                  value={shorten(property.ownerWallet)}
+                                  detail={property.ownerWallet}
+                                  mono
+                                />
+                                <DashboardMetric
+                                  label="Linked value units"
+                                  value={formatDecimalForDisplay(linkedValueUnits, 0)}
+                                  detail={`${linkedPercent}% of the total economic value`}
+                                />
+                                <DashboardMetric
+                                  label="Linked value in ETH"
+                                  value={formatEthLabel(linkedValueEth)}
+                                  detail={renderFiatSummary(linkedValueEth, fiatRates)}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="rounded-3xl border border-line bg-white/80 p-4">
+                              <p className="soft-label">Free value token</p>
+                              <h3 className="mt-2 text-lg font-semibold text-foreground">
+                                Transferable economic exposure only
+                              </h3>
+                              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                <DashboardMetric
+                                  label="Value token"
+                                  value={
+                                    registration?.valueTokenAddress
+                                      ? shorten(registration.valueTokenAddress)
+                                      : "Not created yet"
+                                  }
+                                  detail={
+                                    registration?.valueTokenAddress ??
+                                    "Created at tokenization time."
+                                  }
+                                  mono={Boolean(registration?.valueTokenAddress)}
+                                />
+                                <DashboardMetric
+                                  label="Token decimals"
+                                  value="0"
+                                  detail="Each unit is a whole-number economic slice."
+                                />
+                                <DashboardMetric
+                                  label="Free supply"
+                                  value={formatDecimalForDisplay(freeValueUnits, 0)}
+                                  detail={`${freePercent}% of the total economic value`}
+                                />
+                                <DashboardMetric
+                                  label="Owner free balance"
+                                  value={formatDecimalForDisplay(ownerFreeBalanceUnits, 0)}
+                                  detail={
+                                    isTokenized
+                                      ? `${formatEthLabel(ownerFreeBalanceEth)} • ${renderFiatSummary(ownerFreeBalanceEth, fiatRates)}`
+                                      : "Will appear after tokenization."
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+                            <div className="rounded-3xl border border-line bg-white/80 p-4">
+                              <p className="soft-label">Economic ownership</p>
+                              <h3 className="mt-2 text-lg font-semibold text-foreground">
+                                Current participant breakdown
+                              </h3>
+                              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                                <DashboardMetric
+                                  label="Owner total units"
+                                  value={formatDecimalForDisplay(ownerTotalEconomicUnits, 0)}
+                                  detail={
+                                    isTokenized
+                                      ? `${ownerTotalEconomicPercent}% of the total economic value`
+                                      : "Waiting for tokenization."
+                                  }
+                                />
+                                <DashboardMetric
+                                  label="Owner total in ETH"
+                                  value={formatEthLabel(ownerTotalEconomicEth)}
+                                  detail={renderFiatSummary(ownerTotalEconomicEth, fiatRates)}
+                                />
+                                <DashboardMetric
+                                  label="Participants"
+                                  value="1"
+                                  detail="Only the owner participates before primary sales open."
+                                />
+                              </div>
+
+                              <div className="mt-4 overflow-hidden rounded-3xl border border-line">
+                                <div className="grid grid-cols-[1.1fr_0.8fr_0.8fr_0.8fr] gap-3 bg-stone-100 px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
+                                  <p>Participant</p>
+                                  <p>Usufruct</p>
+                                  <p>Linked</p>
+                                  <p>Free</p>
+                                </div>
+                                <div className="grid grid-cols-[1.1fr_0.8fr_0.8fr_0.8fr] gap-3 px-4 py-4 text-sm text-muted">
+                                  <p className="mono break-all text-foreground">
+                                    {property.ownerWallet}
+                                  </p>
+                                  <p className="text-foreground">Holder</p>
+                                  <p className="text-foreground">
+                                    {formatDecimalForDisplay(linkedValueUnits, 0)}
+                                  </p>
+                                  <p className="text-foreground">
+                                    {formatDecimalForDisplay(ownerFreeBalanceUnits, 0)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="rounded-3xl border border-line bg-white/80 p-4">
+                              <p className="soft-label">Primary sale marketplace</p>
+                              <h3 className="mt-2 text-lg font-semibold text-foreground">
+                                Buyers, offers, and escrow
+                              </h3>
+                              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-1">
+                                <DashboardMetric
+                                  label="Buyer balances after sale"
+                                  value="0 buyers"
+                                  detail="Buying flow starts in milestone 0.9, so no buyer balance exists yet."
+                                />
+                                <DashboardMetric
+                                  label="Active offers"
+                                  value={`${activeListings.length} listings`}
+                                  detail={
+                                    activeListings.length
+                                      ? "Offers below are live in the local marketplace view."
+                                      : "No active offer yet."
+                                  }
+                                />
+                                <DashboardMetric
+                                  label="Tokens in active escrow"
+                                  value={`${formatDecimalForDisplay(activeEscrowedAmount, 0)} units`}
+                                  detail={
+                                    activeEscrowedAmount === "0"
+                                      ? "No free-value token is escrowed yet."
+                                      : "Escrowed tokens are held by PrimaryValueSale until buy or cancel."
+                                  }
+                                />
+                              </div>
+
+                              <div className="mt-4 rounded-3xl border border-line bg-stone-100/80 p-4">
+                                <p className="soft-label">Create primary sale offer</p>
+                                <div className="mt-3 grid gap-4 md:grid-cols-2">
+                                  <Field label="Free-value units to sell">
+                                    <input
+                                      value={saleAmount}
+                                      onChange={(event) =>
+                                        updateSaleAmount(
+                                          property.localPropertyId,
+                                          event.target.value.replace(/[^\d]/g, ""),
+                                        )
+                                      }
+                                      className={inputClassName}
+                                      inputMode="numeric"
+                                      placeholder="300000"
+                                    />
+                                  </Field>
+                                  <div className="rounded-3xl border border-line bg-white/80 p-4 text-sm text-muted">
+                                    <p className="soft-label">Sale preview</p>
+                                    {saleAmountIsValid ? (
+                                      <div className="mt-3 space-y-2">
+                                        <p>
+                                          <span className="font-semibold text-foreground">
+                                            Equivalent percentage:
+                                          </span>{" "}
+                                          {saleListedPercent}%
+                                        </p>
+                                        <p>
+                                          <span className="font-semibold text-foreground">
+                                            Calculated price:
+                                          </span>{" "}
+                                          {formatEthLabel(salePriceEth)}
+                                        </p>
+                                        <p>
+                                          <span className="font-semibold text-foreground">
+                                            Fiat equivalent:
+                                          </span>{" "}
+                                          {renderFiatSummary(salePriceEth, fiatRates)}
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <p className="mt-3">
+                                        Enter a positive whole-number amount to preview the sale.
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm leading-7 text-amber-950">
+                                  The usufruct NFT will not be transferred. The linked economic
+                                  value will not be transferred. Only the selected free-value
+                                  ERC-20 amount is escrowed for sale.
+                                </div>
+
+                                <div className="mt-4 flex flex-wrap items-center gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      void handleCreatePrimarySaleListing(
+                                        property,
+                                        saleAmount,
+                                      );
+                                    }}
+                                    disabled={createListingButtonDisabled}
+                                    className="inline-flex items-center justify-center rounded-full bg-stone-900 px-4 py-3 text-sm font-semibold text-stone-50 transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    {createListingButtonLabel}
+                                  </button>
+
+                                  {!primaryValueSaleAddress ? (
+                                    <span className="text-sm text-muted">
+                                      Primary sale contract is not configured on the registry.
+                                    </span>
+                                  ) : null}
+
+                                  {registration?.status === "MockVerified" ? (
+                                    <span className="text-sm text-muted">
+                                      Tokenize the property before creating a primary sale offer.
+                                    </span>
+                                  ) : null}
+
+                                  {saleAmountIsValid &&
+                                  BigInt(saleAmount) > BigInt(ownerFreeBalanceUnits) ? (
+                                    <span className="text-sm text-muted">
+                                      Requested amount exceeds the owner free-value balance available
+                                      outside escrow.
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+
+                              <div className="mt-4 rounded-3xl border border-line bg-white/75 p-4">
+                                <p className="soft-label">Marketplace listings</p>
+                                {activeListings.length ? (
+                                  <div className="mt-4 space-y-3">
+                                    {activeListings.map((listing) => {
+                                      const listingPriceEth = weiToEthDecimalString(
+                                        listing.priceWei,
+                                        8,
+                                      );
+                                      const listingPercent = divideDecimalStrings(
+                                        multiplyDecimalStrings(listing.amount, "100", 4),
+                                        TOTAL_VALUE_UNITS,
+                                        4,
+                                      );
+
+                                      return (
+                                        <div
+                                          key={`${property.localPropertyId}-${listing.listingId}`}
+                                          className="rounded-3xl border border-line bg-stone-50/80 p-4"
+                                        >
+                                          <div className="flex flex-wrap items-start justify-between gap-3">
+                                            <div>
+                                              <p className="text-sm font-semibold text-foreground">
+                                                Listing #{listing.listingId}
+                                              </p>
+                                              <p className="mt-1 text-sm text-muted">
+                                                {formatDecimalForDisplay(listing.amount, 0)} units •{" "}
+                                                {listingPercent}% of the total economic value
+                                              </p>
+                                            </div>
+                                            <span className="rounded-full bg-stone-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-stone-50">
+                                              {listing.status}
+                                            </span>
+                                          </div>
+                                          <div className="mt-3 grid gap-3 text-sm text-muted md:grid-cols-2">
+                                            <p>
+                                              <span className="font-semibold text-foreground">
+                                                Price:
+                                              </span>{" "}
+                                              {formatEthLabel(listingPriceEth)}
+                                            </p>
+                                            <p>
+                                              <span className="font-semibold text-foreground">
+                                                Fiat:
+                                              </span>{" "}
+                                              {renderFiatSummary(listingPriceEth, fiatRates)}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <p className="mt-4 text-sm leading-7 text-muted">
+                                    No offer is live yet. The first confirmed listing will appear
+                                    here as the local marketplace view.
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="mt-4 rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm leading-7 text-amber-950">
+                                Right of Free Value does not grant occupancy, residence, or use
+                                rights. The usufruct NFT keeps the right of use and the linked
+                                economic value together.
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1805,6 +2569,34 @@ function StatCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-3xl border border-line bg-white/75 p-5">
       <p className="soft-label">{label}</p>
       <p className="mt-3 text-lg font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function DashboardMetric({
+  label,
+  value,
+  detail,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-3xl border border-line bg-white/75 p-4">
+      <p className="soft-label">{label}</p>
+      <p
+        className={`mt-2 text-base font-semibold text-foreground ${
+          mono ? "mono break-all text-sm" : ""
+        }`}
+      >
+        {value}
+      </p>
+      {detail ? (
+        <p className="mt-2 text-sm leading-6 text-muted">{detail}</p>
+      ) : null}
     </div>
   );
 }

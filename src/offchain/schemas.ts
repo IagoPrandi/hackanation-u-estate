@@ -128,10 +128,36 @@ export const propertyTokenizationInputSchema = z.object({
     .regex(/^\d+$/, "Free value units must be an integer string."),
 });
 
+export const propertyPrimarySaleListingInputSchema = z.object({
+  kind: z.literal("primarySaleListing"),
+  localPropertyId: z.uuid(),
+  propertyId: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Property id must be a positive integer string."),
+  listingId: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Listing id must be a positive integer string."),
+  txHash: z
+    .string()
+    .trim()
+    .refine((value) => isHash(value), "Transaction hash must be a valid hash."),
+  amount: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Listing amount must be a positive integer string."),
+  priceWei: z
+    .string()
+    .trim()
+    .regex(/^[1-9]\d*$/, "Listing price must be a positive integer string."),
+});
+
 export const propertyOnchainSyncSchema = z.discriminatedUnion("kind", [
   propertyOnchainRegistrationInputSchema,
   propertyMockVerificationInputSchema,
   propertyTokenizationInputSchema,
+  propertyPrimarySaleListingInputSchema,
 ]);
 
 export type PropertyDraftInput = z.infer<typeof propertyIntakeSchema>;
@@ -145,6 +171,9 @@ export type PropertyMockVerificationInput = z.infer<
 >;
 export type PropertyTokenizationInput = z.infer<
   typeof propertyTokenizationInputSchema
+>;
+export type PropertyPrimarySaleListingInput = z.infer<
+  typeof propertyPrimarySaleListingInputSchema
 >;
 export type PropertyOnchainSyncInput = z.infer<typeof propertyOnchainSyncSchema>;
 
@@ -222,7 +251,12 @@ export type SavedPropertyRecord = PropertyDraftPreview & {
   onchainRegistration?: {
     propertyId: string;
     txHash: string;
-    status: "PendingMockVerification" | "MockVerified" | "Tokenized";
+    status:
+      | "PendingMockVerification"
+      | "MockVerified"
+      | "Tokenized"
+      | "ActiveSale"
+      | "SoldOut";
     registeredAt: string;
     verificationTxHash?: string;
     verifiedAt?: string;
@@ -232,6 +266,17 @@ export type SavedPropertyRecord = PropertyDraftPreview & {
     usufructTokenId?: string;
     linkedValueUnits?: string;
     freeValueUnits?: string;
+    activeListingsCount?: string;
+    activeEscrowedAmount?: string;
+    totalFreeValueSold?: string;
+    primarySaleListings?: Array<{
+      listingId: string;
+      amount: string;
+      priceWei: string;
+      txHash: string;
+      status: "Active";
+      listedAt: string;
+    }>;
   };
 };
 

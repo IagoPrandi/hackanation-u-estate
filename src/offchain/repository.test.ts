@@ -9,6 +9,7 @@ import {
   listPropertyDrafts,
   savePropertyMockVerification,
   saveOnchainPropertyRegistration,
+  savePropertyPrimarySaleListing,
   savePropertyTokenization,
 } from "@/offchain/repository";
 import { hashStableJson } from "@/offchain/hash";
@@ -193,6 +194,67 @@ describe("property drafts", () => {
       freeValueUnits: "800000",
     });
     expect(updatedRecord.onchainRegistration?.tokenizedAt).toBeTruthy();
+  });
+
+  it("persists primary sale listings after on-chain listing creation", async () => {
+    const record = await createPropertyDraft(createInput());
+
+    await saveOnchainPropertyRegistration({
+      kind: "registration",
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      txHash:
+        "0x1111111111111111111111111111111111111111111111111111111111111111",
+    });
+
+    await savePropertyMockVerification({
+      kind: "mockVerification",
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      txHash:
+        "0x2222222222222222222222222222222222222222222222222222222222222222",
+    });
+
+    await savePropertyTokenization({
+      kind: "tokenization",
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      txHash:
+        "0x3333333333333333333333333333333333333333333333333333333333333333",
+      valueTokenAddress: "0x0000000000000000000000000000000000000ABC",
+      usufructTokenId: "1",
+      linkedValueUnits: "200000",
+      freeValueUnits: "800000",
+    });
+
+    const updatedRecord = await savePropertyPrimarySaleListing({
+      kind: "primarySaleListing",
+      localPropertyId: record.localPropertyId,
+      propertyId: "1",
+      listingId: "1",
+      txHash:
+        "0x4444444444444444444444444444444444444444444444444444444444444444",
+      amount: "300000",
+      priceWei: "3000000000000000000",
+    });
+
+    expect(updatedRecord.onchainRegistration).toMatchObject({
+      propertyId: "1",
+      status: "ActiveSale",
+      activeListingsCount: "1",
+      activeEscrowedAmount: "300000",
+      totalFreeValueSold: "0",
+    });
+    expect(updatedRecord.onchainRegistration?.primarySaleListings).toEqual([
+      expect.objectContaining({
+        listingId: "1",
+        amount: "300000",
+        priceWei: "3000000000000000000",
+        txHash:
+          "0x4444444444444444444444444444444444444444444444444444444444444444",
+        status: "Active",
+      }),
+    ]);
   });
 });
 

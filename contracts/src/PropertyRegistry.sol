@@ -336,6 +336,51 @@ contract PropertyRegistry {
         );
     }
 
+    function syncPropertySaleStatus(
+        uint256 propertyId,
+        ProtocolTypes.PropertyStatus newStatus
+    ) external {
+        if (msg.sender != primaryValueSale) {
+            revert Unauthorized();
+        }
+
+        if (!propertyExists[propertyId]) {
+            revert PropertyNotFound();
+        }
+
+        ProtocolTypes.PropertyRecord storage property = properties[propertyId];
+        ProtocolTypes.PropertyStatus currentStatus = property.status;
+
+        if (newStatus == ProtocolTypes.PropertyStatus.ActiveSale) {
+            if (
+                currentStatus != ProtocolTypes.PropertyStatus.Tokenized &&
+                currentStatus != ProtocolTypes.PropertyStatus.ActiveSale
+            ) {
+                revert InvalidPropertyStatus();
+            }
+        } else if (
+            newStatus == ProtocolTypes.PropertyStatus.Tokenized ||
+            newStatus == ProtocolTypes.PropertyStatus.SoldOut
+        ) {
+            if (
+                currentStatus != ProtocolTypes.PropertyStatus.ActiveSale &&
+                currentStatus != ProtocolTypes.PropertyStatus.Tokenized
+            ) {
+                revert InvalidPropertyStatus();
+            }
+        } else {
+            revert InvalidPropertyStatus();
+        }
+
+        if (currentStatus == newStatus) {
+            return;
+        }
+
+        property.status = newStatus;
+
+        emit PropertyStatusUpdated(propertyId, currentStatus, newStatus);
+    }
+
     function getPropertiesByOwner(
         address ownerAddress
     ) external view returns (uint256[] memory) {

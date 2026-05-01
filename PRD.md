@@ -2447,36 +2447,36 @@ P0
 
 #### Checklist
 
-- [ ] Mostrar valor de mercado em ETH.
-- [ ] Mostrar valor de mercado em BRL/USD.
-- [ ] Mostrar owner.
-- [ ] Mostrar status.
-- [ ] Mostrar endereÃ§o off-chain.
-- [ ] Mostrar localizaÃ§Ã£o off-chain.
-- [ ] Mostrar `metadataHash`.
-- [ ] Mostrar `documentsHash`.
-- [ ] Mostrar `locationHash`.
-- [ ] Mostrar NFT de usufruto.
-- [ ] Mostrar titular do NFT.
-- [ ] Mostrar unidades vinculadas ao usufruto.
-- [ ] Mostrar percentual vinculado.
-- [ ] Mostrar token de valor livre.
-- [ ] Mostrar supply livre.
-- [ ] Mostrar saldo livre da proprietÃ¡ria.
-- [ ] Mostrar total econÃ´mico da proprietÃ¡ria.
-- [ ] Mostrar participantes.
-- [ ] Mostrar saldos de compradores apÃ³s venda.
-- [ ] Mostrar ofertas ativas.
-- [ ] Mostrar tokens em escrow ativo.
-- [ ] Mostrar explicaÃ§Ã£o â€œDireito de Valor Livre nÃ£o dÃ¡ direito de usoâ€.
+- [x] Mostrar valor de mercado em ETH.
+- [x] Mostrar valor de mercado em BRL/USD.
+- [x] Mostrar owner.
+- [x] Mostrar status.
+- [x] Mostrar endereÃ§o off-chain.
+- [x] Mostrar localizaÃ§Ã£o off-chain.
+- [x] Mostrar `metadataHash`.
+- [x] Mostrar `documentsHash`.
+- [x] Mostrar `locationHash`.
+- [x] Mostrar NFT de usufruto.
+- [x] Mostrar titular do NFT.
+- [x] Mostrar unidades vinculadas ao usufruto.
+- [x] Mostrar percentual vinculado.
+- [x] Mostrar token de valor livre.
+- [x] Mostrar supply livre.
+- [x] Mostrar saldo livre da proprietÃ¡ria.
+- [x] Mostrar total econÃ´mico da proprietÃ¡ria.
+- [x] Mostrar participantes.
+- [x] Mostrar saldos de compradores apÃ³s venda.
+- [x] Mostrar ofertas ativas.
+- [x] Mostrar tokens em escrow ativo.
+- [x] Mostrar explicaÃ§Ã£o â€œDireito de Valor Livre nÃ£o dÃ¡ direito de usoâ€.
 
 #### CritÃ©rio de aceite
 
-- [ ] Dashboard permite entender quem tem o usufruto.
-- [ ] Dashboard permite entender quem tem valor vinculado.
-- [ ] Dashboard permite entender quem tem valor livre.
-- [ ] Dashboard mostra total econÃ´mico por pessoa.
-- [ ] Dashboard mostra valores em ETH e fiduciÃ¡rio.
+- [x] Dashboard permite entender quem tem o usufruto.
+- [x] Dashboard permite entender quem tem valor vinculado.
+- [x] Dashboard permite entender quem tem valor livre.
+- [x] Dashboard mostra total econÃ´mico por pessoa.
+- [x] Dashboard mostra valores em ETH e fiduciÃ¡rio.
 
 #### Prioridade
 
@@ -2490,43 +2490,43 @@ P0
 
 #### Checklist
 
-- [ ] Implementar `PrimaryValueSale`.
-- [ ] Implementar `nextListingId`.
-- [ ] Implementar `listingExists`.
-- [ ] Implementar `listingIds`.
-- [ ] Implementar `listingsByProperty`.
-- [ ] Implementar `activeListingsCountByProperty`.
-- [ ] Implementar `activeEscrowedAmountByProperty`.
-- [ ] Implementar `totalFreeValueSoldByProperty`.
-- [ ] Implementar `createPrimarySaleListing`.
-- [ ] Validar imÃ³vel `Tokenized` ou `ActiveSale`.
-- [ ] Validar `msg.sender == property.owner`.
-- [ ] Validar saldo livre suficiente.
-- [ ] Validar `amount > 0`.
-- [ ] Calcular `priceWei` automaticamente.
-- [ ] Validar `priceWei > 0`.
-- [ ] Travar tokens livres em `address(this)`.
-- [ ] Criar listing.
-- [ ] Atualizar status para `Active`.
-- [ ] Atualizar status do imÃ³vel.
-- [ ] Emitir `PrimarySaleListed`.
-- [ ] Emitir `TokensEscrowed`.
-- [ ] Criar formulÃ¡rio no frontend.
-- [ ] Mostrar percentual equivalente do valor econÃ´mico total.
-- [ ] Mostrar preÃ§o calculado em ETH.
-- [ ] Mostrar preÃ§o calculado em fiduciÃ¡rio.
-- [ ] Mostrar preview da venda.
-- [ ] Mostrar que NFT de usufruto nÃ£o serÃ¡ transferido.
-- [ ] Mostrar que valor vinculado nÃ£o serÃ¡ transferido.
+- [x] Implementar `PrimaryValueSale`.
+- [x] Implementar `nextListingId`.
+- [x] Implementar `listingExists`.
+- [x] Implementar `listingIds`.
+- [x] Implementar `listingsByProperty`.
+- [x] Implementar `activeListingsCountByProperty`.
+- [x] Implementar `activeEscrowedAmountByProperty`.
+- [x] Implementar `totalFreeValueSoldByProperty`.
+- [x] Implementar `createPrimarySaleListing`.
+- [x] Validar imÃ³vel `Tokenized` ou `ActiveSale`.
+- [x] Validar `msg.sender == property.owner`.
+- [x] Validar saldo livre suficiente.
+- [x] Validar `amount > 0`.
+- [x] Calcular `priceWei` automaticamente.
+- [x] Validar `priceWei > 0`.
+- [x] Travar tokens livres em `address(this)`.
+- [x] Criar listing.
+- [x] Atualizar status para `Active`.
+- [x] Atualizar status do imÃ³vel.
+- [x] Emitir `PrimarySaleListed`.
+- [x] Emitir `TokensEscrowed`.
+- [x] Criar formulÃ¡rio no frontend.
+- [x] Mostrar percentual equivalente do valor econÃ´mico total.
+- [x] Mostrar preÃ§o calculado em ETH.
+- [x] Mostrar preÃ§o calculado em fiduciÃ¡rio.
+- [x] Mostrar preview da venda.
+- [x] Mostrar que NFT de usufruto nÃ£o serÃ¡ transferido.
+- [x] Mostrar que valor vinculado nÃ£o serÃ¡ transferido.
 
 #### CritÃ©rio de aceite
 
-- [ ] Pessoa A define vender 300.000 tokens livres.
-- [ ] Sistema mostra que isso equivale a 30% do valor econÃ´mico total.
-- [ ] Contrato calcula preÃ§o de 3 ETH para casa de 10 ETH.
-- [ ] UI mostra equivalente em BRL/USD.
-- [ ] Tokens livres sÃ£o travados em escrow.
-- [ ] Oferta aparece no marketplace.
+- [x] Pessoa A define vender 300.000 tokens livres.
+- [x] Sistema mostra que isso equivale a 30% do valor econÃ´mico total.
+- [x] Contrato calcula preÃ§o de 3 ETH para casa de 10 ETH.
+- [x] UI mostra equivalente em BRL/USD.
+- [x] Tokens livres sÃ£o travados em escrow.
+- [x] Oferta aparece no marketplace.
 
 #### Prioridade
 
