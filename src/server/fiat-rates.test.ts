@@ -22,9 +22,13 @@ describe("getFiatRates", () => {
     process.env.LOCAL_DB_PATH = path.join(tempDir, "db.json");
     process.env.OKX_API_BASE_URL = "https://www.okx.com";
     process.env.OKX_ETH_USDC_INST_ID = "ETH-USDC";
+    process.env.OKX_ETH_USDC_INST_TYPE = "SPOT";
     process.env.OKX_USDC_BRL_INST_ID = "USDC-BRL";
+    process.env.OKX_USDC_BRL_INST_TYPE = "SPOT";
     process.env.OKX_USDC_EUR_INST_ID = "";
+    process.env.OKX_USDC_EUR_INST_TYPE = "SPOT";
     process.env.OKX_USDC_JPY_INST_ID = "";
+    process.env.OKX_USDC_JPY_INST_TYPE = "SPOT";
     process.env.FIAT_REQUEST_TIMEOUT_MS = "3000";
     process.env.FIAT_CACHE_TTL_SECONDS = "60";
     process.env.FIAT_MAX_STALENESS_SECONDS = "3600";
@@ -87,6 +91,52 @@ describe("getFiatRates", () => {
     expect(cache.rates.usd).toBe("2250.1");
     expect(cache.rates.brl).toBe("11475.51");
     expect(cache.updatedAt).toBe("2026-04-29T12:00:00.000Z");
+  });
+
+  it("uses OKX mark price for non-SPOT instruments and ticker for SPOT instruments", async () => {
+    process.env.OKX_ETH_USDC_INST_ID = "ETH-USDT-SWAP";
+    process.env.OKX_ETH_USDC_INST_TYPE = "SWAP";
+
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = input.toString();
+
+      if (url.includes("/api/v5/public/mark-price")) {
+        expect(url).toContain("instType=SWAP");
+        expect(url).toContain("instId=ETH-USDT-SWAP");
+
+        return jsonResponse({
+          code: "0",
+          data: [{ markPx: "2000.00" }],
+        });
+      }
+
+      if (url.includes("/api/v5/market/ticker") && url.includes("USDC-BRL")) {
+        return jsonResponse({
+          code: "0",
+          data: [{ last: "5.10" }],
+        });
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const result = await getFiatRates({
+      fetchImpl,
+      now: new Date("2026-04-29T12:00:00.000Z"),
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.body.ok).toBe(true);
+
+    if (!result.body.ok) {
+      return;
+    }
+
+    expect(result.body.cached).toBe(false);
+    expect(result.body.rates.usd).toBe("2000");
+    expect(result.body.rates.brl).toBe("10200");
+    expect(result.body.routes.usd).toBe("SWAP:ETH-USDT-SWAP");
+    expect(result.body.routes.brl).toBe("SWAP:ETH-USDT-SWAP * USDC-BRL");
   });
 
   it("uses the cached snapshot within TTL without calling OKX again", async () => {

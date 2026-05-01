@@ -741,6 +741,29 @@ contract PropertyRegistryTest {
         sale.createPrimarySaleListing(propertyId, 900_000);
     }
 
+    function testCreatePrimarySaleListingRejectsZeroPrice() external {
+        vm.prank(ALICE);
+        uint256 propertyId = registry.registerProperty(
+            1,
+            2_000,
+            METADATA_HASH,
+            DOCUMENTS_HASH,
+            LOCATION_HASH
+        );
+
+        vm.prank(ALICE);
+        registry.mockVerifyProperty(propertyId);
+
+        vm.prank(ALICE);
+        registry.tokenizeProperty(propertyId);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PrimaryValueSale.PriceZero.selector)
+        );
+        sale.createPrimarySaleListing(propertyId, 1);
+    }
+
     function testBuyPrimarySaleListingTransfersValueAndResetsStatus() external {
         uint256 propertyId = _registerAndVerifyProperty();
 
@@ -1012,6 +1035,29 @@ contract PropertyRegistryTest {
         );
     }
 
+    function testBuyPrimarySaleListingSetsFilledBeforeSellerInteraction() external {
+        ObservingSeller seller = new ObservingSeller(registry, sale);
+        uint256 propertyId = seller.registerAndPrepareProperty(
+            10 ether,
+            2_000,
+            METADATA_HASH,
+            DOCUMENTS_HASH,
+            LOCATION_HASH
+        );
+        uint256 listingId = seller.createListing(propertyId, 300_000);
+
+        vm.deal(BOB, 10 ether);
+
+        vm.prank(BOB);
+        sale.buyPrimarySaleListing{value: 3 ether}(listingId);
+
+        require(seller.observedFilledBeforeEth(), "filled-before-eth check failed");
+        require(
+            address(seller).balance == 3 ether,
+            "seller eth balance mismatch"
+        );
+    }
+
     function testCancelPrimarySaleListingReturnsEscrowAndResetsStatus() external {
         uint256 propertyId = _registerAndVerifyProperty();
 
@@ -1183,5 +1229,68 @@ contract RejectingSeller {
 
     receive() external payable {
         revert("NO_ETH");
+    }
+}
+
+contract ObservingSeller {
+    PropertyRegistry internal immutable registry;
+    PrimaryValueSale internal immutable sale;
+
+    uint256 internal observedPropertyId;
+    uint256 internal observedListingId;
+    bool internal observedFilled;
+
+    constructor(PropertyRegistry registry_, PrimaryValueSale sale_) {
+        registry = registry_;
+        sale = sale_;
+    }
+
+    function registerAndPrepareProperty(
+        uint256 marketValueWei,
+        uint16 linkedValueBps,
+        bytes32 metadataHash,
+        bytes32 documentsHash,
+        bytes32 locationHash
+    ) external returns (uint256 propertyId) {
+        propertyId = registry.registerProperty(
+            marketValueWei,
+            linkedValueBps,
+            metadataHash,
+            documentsHash,
+            locationHash
+        );
+        registry.mockVerifyProperty(propertyId);
+        registry.tokenizeProperty(propertyId);
+        observedPropertyId = propertyId;
+    }
+
+    function createListing(
+        uint256 propertyId,
+        uint256 amount
+    ) external returns (uint256 listingId) {
+        listingId = sale.createPrimarySaleListing(propertyId, amount);
+        observedListingId = listingId;
+    }
+
+    function observedFilledBeforeEth() external view returns (bool) {
+        return observedFilled;
+    }
+
+    receive() external payable {
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ProtocolTypes.SaleStatus status
+        ) = sale.listings(observedListingId);
+        if (status != ProtocolTypes.SaleStatus.Filled) {
+            revert("LISTING_NOT_FILLED");
+        }
+        if (sale.activeListingsCountByProperty(observedPropertyId) != 0) {
+            revert("LISTING_COUNT_NOT_UPDATED");
+        }
+        observedFilled = true;
     }
 }

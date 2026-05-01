@@ -157,14 +157,14 @@
       "brl": "ETH-USDC * USDC-BRL"
     },
     "rates": {
-      "usd": "2262.89",
-      "brl": "11246.5633"
+      "usd": "2308.99",
+      "brl": "11443.35444"
     },
     "unavailable": [],
     "optionalRates": {
       "eur": null,
       "jpy": null
     },
-    "updatedAt": "2026-05-01T01:15:37.354Z"
+    "updatedAt": "2026-05-01T13:07:47.659Z"
   }
 }

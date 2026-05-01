@@ -2792,7 +2792,7 @@ P0
 5. UI mostra valor aproximado em USD e, se disponÃ­vel, BRL.
 6. Pessoa A define valor vinculado ao usufruto: 20%.
 7. Pessoa A insere endereÃ§o e localizaÃ§Ã£o.
-8. Pessoa A envia documentos mockados.
+8. Pessoa A envia documentos mockados (utilizar para teste documentos em ./mock_docs).
 9. Dados sÃ£o salvos no banco local via server-side.
 10. Hashes sÃ£o gerados com `keccak256` sobre JSON estÃ¡vel.
 11. Pessoa A registra imÃ³vel on-chain.

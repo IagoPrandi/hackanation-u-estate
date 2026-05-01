@@ -41,4 +41,9 @@ The wrapper runs `forge script` in dedicated Foundry container, not inside `app`
 GET /api/fiat-rates
 ```
 
-The route fetches `ETH-USDC` and `USDC-BRL` from OKX server-side, stores the last valid snapshot in `lowdb`, and returns cached fallback rates when the provider is temporarily unavailable.
+The route uses only OKX public endpoints server-side, with no private key. `SPOT` instruments use `GET /api/v5/market/ticker`, while `MARGIN`, `SWAP`, `FUTURES`, `OPTION`, and `EVENTS` instruments use `GET /api/v5/public/mark-price` as documented by OKX. The app ships with `ETH-USDC` and `USDC-BRL` as `SPOT`, stores the last valid snapshot in `lowdb`, and returns cached fallback rates when the provider is temporarily unavailable.
+
+## Demo prep
+
+- Runbook: [DEMO_RUNBOOK.md](./DEMO_RUNBOOK.md)
+- Preflight: `.\scripts\demo-preflight.ps1 -SellerAddress 0xSELLER -BuyerAddress 0xBUYER`
