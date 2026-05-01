@@ -1508,14 +1508,14 @@ export function PropertyWorkbench({
         <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:px-10 lg:py-10">
           <div className="space-y-6">
             <div className="space-y-3">
-              <p className="soft-label">Milestone 0.10</p>
+              <p className="soft-label">Milestone 0.11</p>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.03em] text-foreground sm:text-5xl">
-                Cancel an active primary sale offer safely.
+                Enforce platform-only asset transfers.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                The seller can unwind an active offer, recover escrowed free-value
-                tokens, and push the property status back to the correct sale state
-                without moving the usufruct NFT or linked value.
+                Direct wallet transfers and approvals stay blocked for the usufruct
+                NFT and the free-value token. Only the marketplace contract can move
+                the ERC-20 during listing, purchase, and cancellation settlement.
               </p>
             </div>
 
@@ -2673,6 +2673,12 @@ export function PropertyWorkbench({
                                   }
                                 />
                               </div>
+
+                              <div className="mt-4 rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm leading-7 text-amber-950">
+                                Direct wallet transfers and approvals are disabled for this
+                                ERC-20. Only <span className="mono">PrimaryValueSale</span> can
+                                move free-value units during marketplace settlement.
+                              </div>
                             </div>
                           </div>
 
@@ -3087,6 +3093,12 @@ export function PropertyWorkbench({
                                 Right of Free Value does not grant occupancy, residence, or use
                                 rights. The usufruct NFT keeps the right of use and the linked
                                 economic value together.
+                              </div>
+
+                              <div className="mt-4 rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm leading-7 text-amber-950">
+                                The usufruct NFT also blocks direct transfers, approvals, and
+                                approval-for-all permissions. The platform keeps custody logic
+                                centralized in the marketplace flow.
                               </div>
                             </div>
                           </div>

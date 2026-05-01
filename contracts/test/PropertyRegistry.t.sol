@@ -521,6 +521,18 @@ contract PropertyRegistryTest {
             abi.encodeWithSelector(UsufructRightNFT.ApprovalsDisabled.selector)
         );
         usufructRightNft.approve(BOB, propertyId);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(UsufructRightNFT.TransfersDisabled.selector)
+        );
+        usufructRightNft.safeTransferFrom(ALICE, BOB, propertyId);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(UsufructRightNFT.ApprovalsDisabled.selector)
+        );
+        usufructRightNft.setApprovalForAll(BOB, true);
     }
 
     function testPropertyValueTokenBlocksDirectTransferAndApproval() external {
@@ -541,6 +553,44 @@ contract PropertyRegistryTest {
             abi.encodeWithSelector(PropertyValueToken.ApprovalsDisabled.selector)
         );
         valueToken.approve(BOB, 1);
+
+        vm.prank(ALICE);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyValueToken.TransfersDisabled.selector)
+        );
+        valueToken.transferFrom(ALICE, BOB, 1);
+    }
+
+    function testAuthorizedOperatorCanMoveFreeValueToken() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        address valueTokenAddress = registry.tokenizeProperty(propertyId);
+        PropertyValueToken valueToken = PropertyValueToken(valueTokenAddress);
+
+        vm.prank(address(sale));
+        bool ok = valueToken.operatorTransfer(ALICE, BOB, 100_000);
+
+        require(ok, "operator transfer failed");
+        require(
+            valueToken.balanceOf(ALICE) == 700_000,
+            "owner balance mismatch"
+        );
+        require(valueToken.balanceOf(BOB) == 100_000, "buyer balance mismatch");
+    }
+
+    function testUnauthorizedOperatorCannotMoveFreeValueToken() external {
+        uint256 propertyId = _registerAndVerifyProperty();
+
+        vm.prank(ALICE);
+        address valueTokenAddress = registry.tokenizeProperty(propertyId);
+        PropertyValueToken valueToken = PropertyValueToken(valueTokenAddress);
+
+        vm.prank(BOB);
+        vm.expectRevert(
+            abi.encodeWithSelector(PropertyValueToken.Unauthorized.selector)
+        );
+        valueToken.operatorTransfer(ALICE, BOB, 100_000);
     }
 
     function testCreatePrimarySaleListingEscrowsFreeValueAndMarksActiveSale()

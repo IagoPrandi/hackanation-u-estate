@@ -2620,25 +2620,25 @@ P0
 
 #### Checklist
 
-- [ ] Bloquear `transfer` direto do ERC-20.
-- [ ] Bloquear `transferFrom` direto do ERC-20.
-- [ ] Bloquear `approve` do ERC-20.
-- [ ] Bloquear `transferFrom` direto do NFT.
-- [ ] Bloquear `safeTransferFrom` direto do NFT.
-- [ ] Bloquear `approve` do NFT.
-- [ ] Bloquear `setApprovalForAll` do NFT.
-- [ ] Permitir transferÃªncia do ERC-20 por `PrimaryValueSale`.
-- [ ] Testar operador autorizado.
-- [ ] Testar operador nÃ£o autorizado.
-- [ ] Exibir mensagem na UI explicando restriÃ§Ã£o.
+- [x] Bloquear `transfer` direto do ERC-20.
+- [x] Bloquear `transferFrom` direto do ERC-20.
+- [x] Bloquear `approve` do ERC-20.
+- [x] Bloquear `transferFrom` direto do NFT.
+- [x] Bloquear `safeTransferFrom` direto do NFT.
+- [x] Bloquear `approve` do NFT.
+- [x] Bloquear `setApprovalForAll` do NFT.
+- [x] Permitir transferÃªncia do ERC-20 por `PrimaryValueSale`.
+- [x] Testar operador autorizado.
+- [x] Testar operador nÃ£o autorizado.
+- [x] Exibir mensagem na UI explicando restriÃ§Ã£o.
 
 #### CritÃ©rio de aceite
 
-- [ ] TransferÃªncia direta do token reverte.
-- [ ] AprovaÃ§Ã£o do token reverte.
-- [ ] TransferÃªncia direta do NFT reverte.
-- [ ] AprovaÃ§Ã£o do NFT reverte.
-- [ ] Compra via marketplace funciona.
+- [x] TransferÃªncia direta do token reverte.
+- [x] AprovaÃ§Ã£o do token reverte.
+- [x] TransferÃªncia direta do NFT reverte.
+- [x] AprovaÃ§Ã£o do NFT reverte.
+- [x] Compra via marketplace funciona.
 
 #### Prioridade
 
