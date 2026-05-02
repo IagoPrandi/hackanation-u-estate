@@ -64,6 +64,22 @@ $script:OkLines = New-Object System.Collections.Generic.List[string]
 
 Add-OkLine "Loaded .env.app and .env.deploy for demo preflight validation."
 
+if ([string]::IsNullOrWhiteSpace($SellerAddress) -and $appEnv.ContainsKey("DEMO_SELLER_ADDRESS")) {
+  $SellerAddress = $appEnv["DEMO_SELLER_ADDRESS"]
+}
+
+if ([string]::IsNullOrWhiteSpace($BuyerAddress) -and $appEnv.ContainsKey("DEMO_BUYER_ADDRESS")) {
+  $BuyerAddress = $appEnv["DEMO_BUYER_ADDRESS"]
+}
+
+if ([string]::IsNullOrWhiteSpace($SellerAddress) -and $deployEnv.ContainsKey("PERSON_A_ADDRESS")) {
+  $SellerAddress = $deployEnv["PERSON_A_ADDRESS"]
+}
+
+if ([string]::IsNullOrWhiteSpace($BuyerAddress) -and $deployEnv.ContainsKey("PERSON_B_ADDRESS")) {
+  $BuyerAddress = $deployEnv["PERSON_B_ADDRESS"]
+}
+
 $requiredAppVars = @(
   "NEXT_PUBLIC_PROPERTY_REGISTRY_ADDRESS",
   "NEXT_PUBLIC_USUFRUCT_RIGHT_NFT_ADDRESS",
@@ -131,15 +147,29 @@ if ([string]::IsNullOrWhiteSpace($localDbPath)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($SellerAddress)) {
-  Add-WarningLine "SellerAddress was not provided. Seller wallet balance was not checked."
+  Add-ErrorLine "SellerAddress is required for milestone 0.13 demo-wallet validation."
 } elseif (!(Test-AddressLike $SellerAddress)) {
   Add-ErrorLine "SellerAddress is not a valid EVM address."
+} else {
+  Add-OkLine "SellerAddress is configured for demo validation."
 }
 
 if ([string]::IsNullOrWhiteSpace($BuyerAddress)) {
-  Add-WarningLine "BuyerAddress was not provided. Buyer wallet balance was not checked."
+  Add-ErrorLine "BuyerAddress is required for milestone 0.13 demo-wallet validation."
 } elseif (!(Test-AddressLike $BuyerAddress)) {
   Add-ErrorLine "BuyerAddress is not a valid EVM address."
+} else {
+  Add-OkLine "BuyerAddress is configured for demo validation."
+}
+
+if (
+  !( [string]::IsNullOrWhiteSpace($SellerAddress) ) -and
+  !( [string]::IsNullOrWhiteSpace($BuyerAddress) ) -and
+  (Test-AddressLike $SellerAddress) -and
+  (Test-AddressLike $BuyerAddress) -and
+  ($SellerAddress.ToLowerInvariant() -eq $BuyerAddress.ToLowerInvariant())
+) {
+  Add-ErrorLine "SellerAddress and BuyerAddress must be different wallets."
 }
 
 $canCheckBalances =

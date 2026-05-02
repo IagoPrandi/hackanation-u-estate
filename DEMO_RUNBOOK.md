@@ -20,6 +20,20 @@ Run this before the presentation:
 .\scripts\demo-preflight.ps1 -SellerAddress 0xSELLER -BuyerAddress 0xBUYER
 ```
 
+You can also persist them in `.env.app` as:
+
+```text
+DEMO_SELLER_ADDRESS=0xSELLER
+DEMO_BUYER_ADDRESS=0xBUYER
+```
+
+Or in `.env.deploy` as:
+
+```text
+PERSON_A_ADDRESS=0xSELLER
+PERSON_B_ADDRESS=0xBUYER
+```
+
 The script checks:
 
 - contract addresses configured in `.env.app`
@@ -27,7 +41,8 @@ The script checks:
 - deploy key availability for fresh deployment
 - Foundry `cast` availability
 - Docker CLI availability
-- seller and buyer Sepolia ETH balances when addresses are provided
+- seller and buyer Sepolia ETH balances
+- seller and buyer wallet separation
 
 ## Five-minute script
 

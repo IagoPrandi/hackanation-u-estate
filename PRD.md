@@ -2693,54 +2693,54 @@ P0
 
 #### Checklist
 
-- [ ] Criar testes unitÃ¡rios.
-- [ ] Criar testes de integraÃ§Ã£o.
-- [ ] Testar registro do imÃ³vel.
-- [ ] Testar `propertyExists`.
-- [ ] Testar cÃ¡lculo de `linkedValueUnits`.
-- [ ] Testar cÃ¡lculo de `freeValueUnits`.
-- [ ] Testar mock verification.
-- [ ] Testar tokenizaÃ§Ã£o.
-- [ ] Testar mint do NFT.
-- [ ] Testar criaÃ§Ã£o da `UsufructPosition`.
-- [ ] Testar mint do ERC-20 livre.
-- [ ] Testar `decimals = 0`.
-- [ ] Testar bloqueio de transferÃªncia direta.
-- [ ] Testar factory autorizada.
-- [ ] Testar criaÃ§Ã£o de oferta.
-- [ ] Testar `listingExists`.
-- [ ] Testar preÃ§o proporcional.
-- [ ] Testar `priceWei > 0`.
-- [ ] Testar escrow em `address(this)`.
-- [ ] Testar compra da oferta.
-- [ ] Testar mudanÃ§a para `Filled` antes de interaÃ§Ãµes.
-- [ ] Testar pagamento para seller.
-- [ ] Testar revert em falha de ETH transfer.
-- [ ] Testar recebimento de tokens pelo comprador.
-- [ ] Testar participantes.
-- [ ] Testar status `Tokenized`, `ActiveSale` e `SoldOut`.
-- [ ] Testar cancelamento de oferta.
-- [ ] Testar API `/api/fiat-rates`.
-- [ ] Testar cache de cotaÃ§Ã£o.
-- [ ] Testar fallback de cotaÃ§Ã£o.
-- [ ] Testar erro sem cache.
-- [ ] Testar hashing determinÃ­stico.
-- [ ] Testar deploy na Sepolia.
-- [ ] Testar app via Docker.
-- [ ] Preparar wallets de demo.
-- [ ] Preparar ETH de Sepolia nas wallets.
-- [ ] Preparar roteiro de apresentaÃ§Ã£o.
-- [ ] Preparar fallback de demo.
+- [x] Criar testes unitÃ¡rios.
+- [x] Criar testes de integraÃ§Ã£o.
+- [x] Testar registro do imÃ³vel.
+- [x] Testar `propertyExists`.
+- [x] Testar cÃ¡lculo de `linkedValueUnits`.
+- [x] Testar cÃ¡lculo de `freeValueUnits`.
+- [x] Testar mock verification.
+- [x] Testar tokenizaÃ§Ã£o.
+- [x] Testar mint do NFT.
+- [x] Testar criaÃ§Ã£o da `UsufructPosition`.
+- [x] Testar mint do ERC-20 livre.
+- [x] Testar `decimals = 0`.
+- [x] Testar bloqueio de transferÃªncia direta.
+- [x] Testar factory autorizada.
+- [x] Testar criaÃ§Ã£o de oferta.
+- [x] Testar `listingExists`.
+- [x] Testar preÃ§o proporcional.
+- [x] Testar `priceWei > 0`.
+- [x] Testar escrow em `address(this)`.
+- [x] Testar compra da oferta.
+- [x] Testar mudanÃ§a para `Filled` antes de interaÃ§Ãµes.
+- [x] Testar pagamento para seller.
+- [x] Testar revert em falha de ETH transfer.
+- [x] Testar recebimento de tokens pelo comprador.
+- [x] Testar participantes.
+- [x] Testar status `Tokenized`, `ActiveSale` e `SoldOut`.
+- [x] Testar cancelamento de oferta.
+- [x] Testar API `/api/fiat-rates`.
+- [x] Testar cache de cotaÃ§Ã£o.
+- [x] Testar fallback de cotaÃ§Ã£o.
+- [x] Testar erro sem cache.
+- [x] Testar hashing determinÃ­stico.
+- [x] Testar deploy na Sepolia.
+- [x] Testar app via Docker.
+- [x] Preparar wallets de demo.
+- [x] Preparar ETH de Sepolia nas wallets.
+- [x] Preparar roteiro de apresentaÃ§Ã£o.
+- [x] Preparar fallback de demo.
 
 #### CritÃ©rio de aceite
 
-- [ ] Testes crÃ­ticos passam.
-- [ ] Contratos estÃ£o deployados na Sepolia.
-- [ ] App roda via Docker.
-- [ ] Banco local estÃ¡ preparado.
-- [ ] OKX/cache estÃ¡ funcional.
-- [ ] Wallets de demo tÃªm ETH de Sepolia.
-- [ ] Roteiro da demo foi validado.
+- [x] Testes crÃ­ticos passam.
+- [x] Contratos estÃ£o deployados na Sepolia.
+- [x] App roda via Docker.
+- [x] Banco local estÃ¡ preparado.
+- [x] OKX/cache estÃ¡ funcional.
+- [x] Wallets de demo tÃªm ETH de Sepolia.
+- [x] Roteiro da demo foi validado.
 
 #### Prioridade
 
@@ -2788,7 +2788,7 @@ P0
 1. Pessoa A inicia a aplicaÃ§Ã£o local via Docker.
 2. Pessoa A conecta wallet.
 3. Pessoa A acessa â€œTokenizar minha casaâ€.
-4. Pessoa A insere valor de mercado: 10 ETH.
+4. Pessoa A insere valor de mercado: 0.2 ETH.
 5. UI mostra valor aproximado em USD e, se disponÃ­vel, BRL.
 6. Pessoa A define valor vinculado ao usufruto: 20%.
 7. Pessoa A insere endereÃ§o e localizaÃ§Ã£o.

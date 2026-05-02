@@ -47,3 +47,5 @@ The route uses only OKX public endpoints server-side, with no private key. `SPOT
 
 - Runbook: [DEMO_RUNBOOK.md](./DEMO_RUNBOOK.md)
 - Preflight: `.\scripts\demo-preflight.ps1 -SellerAddress 0xSELLER -BuyerAddress 0xBUYER`
+- Optional `.env.app` demo addresses: `DEMO_SELLER_ADDRESS=...` and `DEMO_BUYER_ADDRESS=...`
+- Optional `.env.deploy` test accounts: `PERSON_A_ADDRESS=...` and `PERSON_B_ADDRESS=...`
