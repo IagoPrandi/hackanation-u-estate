@@ -7,6 +7,7 @@ import { resetDbForTests } from "@/offchain/db";
 import {
   createPropertyDraft,
   listPropertyDrafts,
+  seedSection32DemoScenario,
   savePropertyMockVerification,
   saveOnchainPropertyRegistration,
   savePropertyPrimarySaleCancellation,
@@ -406,6 +407,48 @@ describe("property drafts", () => {
         status: "Cancelled",
       }),
     ]);
+  });
+
+  it("seeds the section 32 demo simulation with the final 70/30 split", async () => {
+    process.env.DEMO_SELLER_ADDRESS = "0x20070C8a9881D8a63CBeF49B2205620c7fe1dD2a";
+    process.env.DEMO_BUYER_ADDRESS = "0x38492e42908BF4EA35aB2baBd6DD95bbd2D7b907";
+
+    const record = await seedSection32DemoScenario();
+
+    expect(record.localPropertyId).toBe("32000000-0000-4000-8000-000000000032");
+    expect(record.ownerWallet).toBe(process.env.DEMO_SELLER_ADDRESS);
+    expect(record.marketValueWei).toBe("200000000000000000");
+    expect(record.linkedValueBps).toBe(2000);
+    expect(record.onchainRegistration).toMatchObject({
+      propertyId: "32",
+      status: "Tokenized",
+      linkedValueUnits: "200000",
+      freeValueUnits: "800000",
+      activeListingsCount: "0",
+      activeEscrowedAmount: "0",
+      totalFreeValueSold: "300000",
+      sellerReceivedWei: "60000000000000000",
+    });
+    expect(record.onchainRegistration?.primarySaleListings).toEqual([
+      expect.objectContaining({
+        listingId: "32",
+        amount: "300000",
+        priceWei: "60000000000000000",
+        status: "Filled",
+        buyerWallet: process.env.DEMO_BUYER_ADDRESS,
+      }),
+    ]);
+    expect(record.onchainRegistration?.buyerBalances).toEqual([
+      expect.objectContaining({
+        buyerWallet: process.env.DEMO_BUYER_ADDRESS,
+        freeValueUnits: "300000",
+        totalPaidWei: "60000000000000000",
+      }),
+    ]);
+
+    const drafts = await listPropertyDrafts();
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].localPropertyId).toBe(record.localPropertyId);
   });
 });
 

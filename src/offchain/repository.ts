@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isAddress, type Address } from "viem";
 import { getDb } from "@/offchain/db";
 import { buildSavedPropertyRecord } from "@/offchain/property-draft";
 import type {
@@ -13,6 +14,16 @@ import type {
   PropertyTokenizationInput,
   SavedPropertyRecord,
 } from "@/offchain/schemas";
+
+const SECTION_32_DEMO_LOCAL_PROPERTY_ID = "32000000-0000-4000-8000-000000000032";
+const SECTION_32_DEMO_PROPERTY_ID = "32";
+const SECTION_32_DEMO_LISTING_ID = "32";
+const SECTION_32_DEMO_VALUE_TOKEN_ADDRESS =
+  "0x0000000000000000000000000000000000000032";
+const DEFAULT_DEMO_SELLER_ADDRESS: Address =
+  "0x1111111111111111111111111111111111111111";
+const DEFAULT_DEMO_BUYER_ADDRESS: Address =
+  "0x2222222222222222222222222222222222222222";
 
 export async function listPropertyDrafts() {
   const db = await getDb();
@@ -47,6 +58,105 @@ export async function createPropertyDraft(
   await db.write();
 
   return record;
+}
+
+export async function seedSection32DemoScenario() {
+  const db = await getDb();
+  const sellerWallet = resolveDemoWalletAddress(
+    process.env.DEMO_SELLER_ADDRESS,
+    DEFAULT_DEMO_SELLER_ADDRESS,
+  );
+  const buyerWalletCandidate = resolveDemoWalletAddress(
+    process.env.DEMO_BUYER_ADDRESS,
+    DEFAULT_DEMO_BUYER_ADDRESS,
+  );
+  const buyerWallet =
+    buyerWalletCandidate.toLowerCase() === sellerWallet.toLowerCase()
+      ? DEFAULT_DEMO_BUYER_ADDRESS
+      : buyerWalletCandidate;
+
+  db.data.properties = db.data.properties.filter(
+    (record) => record.localPropertyId !== SECTION_32_DEMO_LOCAL_PROPERTY_ID,
+  );
+  await db.write();
+
+  await createPropertyDraft({
+    localPropertyId: SECTION_32_DEMO_LOCAL_PROPERTY_ID,
+    ownerWallet: sellerWallet,
+    marketValueEth: "0.2",
+    linkedValueBps: 2000,
+    description:
+      "Section 32 guided demo simulation. Person A keeps usufruct and linked value while Person B buys only free economic value.",
+    street: "Rua Haddock Lobo",
+    number: "595",
+    city: "Sao Paulo",
+    state: "SP",
+    country: "Brazil",
+    postalCode: "01414-001",
+    lat: "-23.561414",
+    lng: "-46.656632",
+    documents: [
+      {
+        type: "mock_deed",
+        filename: "mock_matricula.pdf",
+      },
+      {
+        type: "mock_owner_id",
+        filename: "mock_owner_id.pdf",
+      },
+    ],
+  });
+
+  await saveOnchainPropertyRegistration({
+    kind: "registration",
+    localPropertyId: SECTION_32_DEMO_LOCAL_PROPERTY_ID,
+    propertyId: SECTION_32_DEMO_PROPERTY_ID,
+    txHash:
+      "0x1111111111111111111111111111111111111111111111111111111111111111",
+  });
+
+  await savePropertyMockVerification({
+    kind: "mockVerification",
+    localPropertyId: SECTION_32_DEMO_LOCAL_PROPERTY_ID,
+    propertyId: SECTION_32_DEMO_PROPERTY_ID,
+    txHash:
+      "0x2222222222222222222222222222222222222222222222222222222222222222",
+  });
+
+  await savePropertyTokenization({
+    kind: "tokenization",
+    localPropertyId: SECTION_32_DEMO_LOCAL_PROPERTY_ID,
+    propertyId: SECTION_32_DEMO_PROPERTY_ID,
+    txHash:
+      "0x3333333333333333333333333333333333333333333333333333333333333333",
+    valueTokenAddress: SECTION_32_DEMO_VALUE_TOKEN_ADDRESS,
+    usufructTokenId: SECTION_32_DEMO_PROPERTY_ID,
+    linkedValueUnits: "200000",
+    freeValueUnits: "800000",
+  });
+
+  await savePropertyPrimarySaleListing({
+    kind: "primarySaleListing",
+    localPropertyId: SECTION_32_DEMO_LOCAL_PROPERTY_ID,
+    propertyId: SECTION_32_DEMO_PROPERTY_ID,
+    listingId: SECTION_32_DEMO_LISTING_ID,
+    txHash:
+      "0x4444444444444444444444444444444444444444444444444444444444444444",
+    amount: "300000",
+    priceWei: "60000000000000000",
+  });
+
+  return savePropertyPrimarySalePurchase({
+    kind: "primarySalePurchase",
+    localPropertyId: SECTION_32_DEMO_LOCAL_PROPERTY_ID,
+    propertyId: SECTION_32_DEMO_PROPERTY_ID,
+    listingId: SECTION_32_DEMO_LISTING_ID,
+    txHash:
+      "0x5555555555555555555555555555555555555555555555555555555555555555",
+    buyerWallet,
+    amount: "300000",
+    priceWei: "60000000000000000",
+  });
 }
 
 export async function saveOnchainPropertyRegistration(
@@ -395,4 +505,15 @@ export async function savePropertyPrimarySaleCancellation(
   await db.write();
 
   return property;
+}
+
+function resolveDemoWalletAddress(
+  value: string | undefined,
+  fallback: Address,
+): Address {
+  if (!value) {
+    return fallback;
+  }
+
+  return isAddress(value) ? value : fallback;
 }

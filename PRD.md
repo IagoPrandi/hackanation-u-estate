@@ -2803,13 +2803,13 @@ P0
 16. Sistema cria posiÃ§Ã£o de usufruto com 200.000 unidades vinculadas.
 17. Sistema gera 800.000 tokens de Direito de Valor Livre para Pessoa A.
 18. Pessoa A define venda de 300.000 tokens livres.
-19. Contrato calcula preÃ§o automÃ¡tico de 3 ETH.
+19. Contrato calcula preÃ§o automÃ¡tico de 0.06 ETH.
 20. UI mostra preÃ§o equivalente em USD e, se disponÃ­vel, BRL.
 21. Tokens livres sÃ£o movidos para escrow em `PrimaryValueSale`.
-22. Pessoa B compra a oferta pagando 3 ETH.
+22. Pessoa B compra a oferta pagando 0.06 ETH.
 23. Listing muda para `Filled`.
 24. Pessoa B recebe 300.000 tokens livres.
-25. Pessoa A recebe 3 ETH.
+25. Pessoa A recebe 0.06 ETH.
 26. Pessoa B Ã© adicionada como participante.
 27. Dashboard mostra:
     - Pessoa A mantÃ©m usufruto;

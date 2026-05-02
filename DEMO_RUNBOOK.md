@@ -52,6 +52,9 @@ Explain that one house becomes three rights: usufruct, linked value, and free va
 2. Open guided demo mode.
 Switch between `Committee`, `Person A`, and `Person B` to frame the same flow from the correct perspective.
 
+Optional accelerator:
+Use `Load section 32 simulation` on the home panel to seed the exact PRD end-state with a `0.2 ETH` property, `300000` sold units, and the final `70/30` split.
+
 3. Show `Tokenize my house`.
 Point at the mock upload, deterministic hashes, and the mock verification stage.
 
@@ -77,6 +80,7 @@ Close by explaining that Person A keeps usufruct and linked value while Person B
 If Sepolia transactions are unavailable:
 
 - stay in guided demo mode
+- load the built-in `Load section 32 simulation` fallback
 - use the lifecycle rail and the existing persisted property record
 - explain the transaction feedback banners and marketplace states using the saved local data
 

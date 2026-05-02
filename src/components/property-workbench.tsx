@@ -172,7 +172,7 @@ const initialDocuments: MockDocumentInput[] = [
   },
 ];
 const initialFormState: FormState = {
-  marketValueEth: "10",
+  marketValueEth: "0.2",
   linkedValueBps: 2000,
   description: "Garden-facing townhouse prepared for the local MVP demo.",
   street: "Rua Haddock Lobo",
@@ -227,6 +227,13 @@ export function PropertyWorkbench({
   const [lastSaved, setLastSaved] = useState<SavedPropertyRecord | null>(
     initialProperties[0] ?? null,
   );
+  const [isSeedingDemoSimulation, setIsSeedingDemoSimulation] = useState(false);
+  const [demoSimulationNotice, setDemoSimulationNotice] = useState<string | null>(
+    null,
+  );
+  const [demoSimulationErrorMessage, setDemoSimulationErrorMessage] = useState<
+    string | null
+  >(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [fiatRates, setFiatRates] = useState<FiatRatesSuccessResponse | null>(
@@ -1632,6 +1639,50 @@ export function PropertyWorkbench({
     }
   };
 
+  const handleSeedDemoSimulation = async () => {
+    setIsSeedingDemoSimulation(true);
+    setDemoSimulationNotice(null);
+    setDemoSimulationErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/properties/demo-simulation", {
+        method: "POST",
+      });
+      const payload = (await response.json()) as
+        | { record: SavedPropertyRecord }
+        | { error: string };
+
+      if (!response.ok || !("record" in payload)) {
+        throw new Error(
+          "error" in payload
+            ? payload.error
+            : "Could not load the section 32 demo simulation.",
+        );
+      }
+
+      setProperties((current) => [
+        payload.record,
+        ...current.filter(
+          (property) => property.localPropertyId !== payload.record.localPropertyId,
+        ),
+      ]);
+      setLastSaved(payload.record);
+      setDemoStepId("purchase");
+      setDemoPersona("committee");
+      setDemoSimulationNotice(
+        "Section 32 simulation loaded: 0.2 ETH house, 20% linked value, 300000 free-value units sold for 0.06 ETH.",
+      );
+    } catch (error) {
+      setDemoSimulationErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not load the section 32 demo simulation.",
+      );
+    } finally {
+      setIsSeedingDemoSimulation(false);
+    }
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <section id="home" className="glass-panel overflow-hidden rounded-[2rem]">
@@ -1665,6 +1716,29 @@ export function PropertyWorkbench({
                   {step.label}
                 </a>
               ))}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-line bg-white/78 p-5">
+              <div className="max-w-2xl">
+                <p className="soft-label">Section 32 simulation</p>
+                <p className="mt-2 text-sm leading-7 text-muted">
+                  Load exact final-demo outcome from the PRD: 0.2 ETH market value,
+                  20% linked value, 300000 listed units, 0.06 ETH purchase, final
+                  70/30 economic split between Person A and Person B.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleSeedDemoSimulation();
+                }}
+                disabled={isSeedingDemoSimulation}
+                className="inline-flex items-center justify-center rounded-full border border-stone-900/15 bg-stone-900 px-5 py-3 text-sm font-semibold text-stone-50 transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSeedingDemoSimulation
+                  ? "Loading simulation..."
+                  : "Load section 32 simulation"}
+              </button>
             </div>
 
             <div className="data-grid">
@@ -1758,6 +1832,16 @@ export function PropertyWorkbench({
               <Notice tone="warning">
                 Cached fiat rates in use from {formatTimestamp(fiatRates.updatedAt)}.
               </Notice>
+            ) : null}
+
+            {demoSimulationNotice && !demoSimulationErrorMessage ? (
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900">
+                {demoSimulationNotice}
+              </div>
+            ) : null}
+
+            {demoSimulationErrorMessage ? (
+              <Notice tone="danger">{demoSimulationErrorMessage}</Notice>
             ) : null}
 
             {!propertyRegistryAddress ? (
@@ -3636,7 +3720,8 @@ export function PropertyWorkbench({
                   No drafts stored yet. The first successful POST to
                   <span className="mono"> /api/properties</span> will append a
                   record to
-                  <span className="mono"> offchain-db/db.json</span>.
+                  <span className="mono"> offchain-db/db.json</span>, or you can
+                  load the section 32 simulation from the home panel.
                 </p>
               )}
             </div>
