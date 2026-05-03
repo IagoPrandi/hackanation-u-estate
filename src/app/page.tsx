@@ -1,10 +1,5 @@
-import { PropertyWorkbench } from "@/components/property-workbench";
-import { listPropertyDrafts } from "@/offchain/repository";
+import { UEstateApp } from "@/components/u-estate/app";
 
-export const dynamic = "force-dynamic";
-
-export default async function Home() {
-  const drafts = await listPropertyDrafts();
-
-  return <PropertyWorkbench initialProperties={drafts} />;
+export default function Home() {
+  return <UEstateApp />;
 }

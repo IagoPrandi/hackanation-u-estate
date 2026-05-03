@@ -1,24 +1,28 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Manrope } from "next/font/google";
+import { JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 import { AppProviders } from "@/components/app-providers";
 import "./globals.css";
 
-const manrope = Manrope({
-  variable: "--font-geist-sans",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-geist-mono",
+const jetMono = JetBrains_Mono({
+  variable: "--font-jet-mono",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
-  title: "Usufruct Protocol | Milestone 0.1",
+  title: "u-estate · Tokenização imobiliária",
   description:
-    "Local Docker-ready setup for a hybrid Web2/Web3 property tokenization MVP on Sepolia.",
+    "u-estate separa o direito de usufruir do imóvel do direito sobre o seu valor — duas posições independentes que abrem uma forma totalmente nova de participação econômica em imóveis.",
+  icons: {
+    icon: "/u-estate-logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -27,11 +31,8 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${manrope.variable} ${ibmPlexMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full">
+    <html lang="pt-BR" className={`${jakarta.variable} ${jetMono.variable}`}>
+      <body>
         <AppProviders>{children}</AppProviders>
       </body>
     </html>
