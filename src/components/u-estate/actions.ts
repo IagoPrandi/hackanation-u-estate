@@ -364,6 +364,7 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
       functionName: "buyPrimarySaleListing",
       args: [BigInt(listingId)],
       value: priceWei,
+      gas: BigInt(300_000),
       chainId: sepolia.id,
     });
     onStep("sent");

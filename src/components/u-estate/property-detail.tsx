@@ -103,18 +103,6 @@ export function PropertyDetailPage({
   }>({ open: false, step: "sign", title: "" });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const isOwner =
-    chainMode && property
-      ? Boolean(
-          wallet.address &&
-            wallet.address.toLowerCase() ===
-              (property.id ? wallet.address.toLowerCase() : ""),
-        )
-      : true;
-  // Note: we cannot reliably know the owner from Property type without ownerWallet,
-  // so we expose actions whenever wallet is connected. The contract enforces real ownership.
-  void isOwner;
-
   const runChainAction = async (
     title: string,
     fn: (onStep: (s: TxStep) => void) => Promise<unknown>,
@@ -137,6 +125,10 @@ export function PropertyDetailPage({
       </div>
     );
   const p = property;
+  const isOwner =
+    !p.ownerWallet ||
+    !wallet.address ||
+    p.ownerWallet.toLowerCase() === wallet.address.toLowerCase();
   const journey = ownerJourney(p);
   const propListings = (listings ?? []).filter(
     (l) => l.propertyId === p.propertyId,
@@ -199,7 +191,7 @@ export function PropertyDetailPage({
         actions={
           <>
             <StatusPill status={p.status} />
-            {primary &&
+            {isOwner && primary &&
               (primary.disabled ? (
                 <button className="btn btn-neutral" disabled>
                   <IconClock size={14} /> {primary.label}
@@ -460,7 +452,7 @@ export function PropertyDetailPage({
                               ? "Cancelada"
                               : "Concluída"}
                         </span>
-                        {l.status === "Active" && (
+                        {isOwner && l.status === "Active" && (
                           <button
                             className="btn btn-ghost btn-sm"
                             style={{
@@ -679,7 +671,7 @@ export function PropertyDetailPage({
             </div>
           )}
 
-          {p.status === "MockVerified" && (
+          {isOwner && p.status === "MockVerified" && (
             <div
               className="card card-pad"
               style={{
@@ -709,7 +701,7 @@ export function PropertyDetailPage({
             </div>
           )}
 
-          {p.status === "Tokenized" && (
+          {isOwner && p.status === "Tokenized" && (
             <div
               className="card card-pad"
               style={{

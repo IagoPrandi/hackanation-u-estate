@@ -77,6 +77,7 @@ export function recordToProperty(record: SavedPropertyRecord): Property {
     locationHash: record.locationHash,
     valueTokenAddress: onchain?.valueTokenAddress,
     usufructTokenId: onchain?.usufructTokenId,
+    ownerWallet: record.ownerWallet,
     createdAt: record.createdAt,
   };
 }

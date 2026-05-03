@@ -70,6 +70,7 @@ export const initialProperties: Property[] = [
     locationHash: "0x2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d",
     valueTokenAddress: "0xa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
     usufructTokenId: "1",
+    ownerWallet: "0x1f8a23b9c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9",
     createdAt: "2026-04-12T10:00:00Z",
   },
   {
@@ -104,6 +105,7 @@ export const initialProperties: Property[] = [
     locationHash: "0x5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a",
     valueTokenAddress: "0xb2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1",
     usufructTokenId: "2",
+    ownerWallet: "0x1f8a23b9c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9",
     createdAt: "2026-04-18T15:30:00Z",
   },
   {
@@ -138,6 +140,7 @@ export const initialProperties: Property[] = [
     locationHash: "0x8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d",
     valueTokenAddress: "0xc3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2",
     usufructTokenId: "3",
+    ownerWallet: "0x1f8a23b9c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9",
     createdAt: "2026-03-22T08:00:00Z",
   },
   {
@@ -171,6 +174,7 @@ export const initialProperties: Property[] = [
     locationHash: "0x1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
     valueTokenAddress: "0xd4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3",
     usufructTokenId: "4",
+    ownerWallet: "0x1f8a23b9c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9",
     createdAt: "2026-04-25T12:00:00Z",
   },
 ];

@@ -41,6 +41,7 @@ export type Property = {
   locationHash: string;
   valueTokenAddress?: string;
   usufructTokenId?: string;
+  ownerWallet?: string;
   createdAt: string;
 };
 

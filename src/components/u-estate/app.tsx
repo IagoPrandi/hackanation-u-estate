@@ -147,11 +147,16 @@ export function UEstateApp() {
   }, []);
 
   useEffect(() => {
-    // Initial offchain DB snapshot load. setState fires inside the async fetch
-    // callback (an external boundary), which is the right pattern here.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refreshFromApi();
-  }, [refreshFromApi]);
+    if (wallet.address) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void refreshFromApi();
+    } else {
+      setProperties(initialProperties);
+      setListings(initialListings);
+      setTransactions(initialTransactions);
+      setChainMode(false);
+    }
+  }, [wallet.address, refreshFromApi]);
 
   const submitProperty = useCallback<AppActions["submitProperty"]>(
     async (form, onStep) => {
@@ -478,10 +483,19 @@ export function UEstateApp() {
             role={role}
           />
         );
-      case "properties":
+      case "properties": {
+        const ownedProperties =
+          chainMode && wallet.address
+            ? properties.filter(
+                (p) =>
+                  !p.ownerWallet ||
+                  p.ownerWallet.toLowerCase() === wallet.address!.toLowerCase(),
+              )
+            : properties;
         return (
-          <PropertiesPage properties={properties} navigate={navigate} />
+          <PropertiesPage properties={ownedProperties} navigate={navigate} />
         );
+      }
       case "property-new":
         return (
           <PropertyNewPage navigate={navigate} actions={appActions} />
