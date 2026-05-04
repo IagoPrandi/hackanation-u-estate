@@ -1542,7 +1542,7 @@ export function PropertyWorkbench({
         address: primaryValueSaleAddress,
         abi: primaryValueSaleAbi,
         functionName: "buyPrimarySaleListing",
-        args: [BigInt(listingId)],
+        args: [BigInt(listingId), BigInt(listing.amount)],
         value: BigInt(priceWei),
         chainId: sepolia.id,
       });

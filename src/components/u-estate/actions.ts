@@ -68,6 +68,7 @@ export type UEstateActions = {
   buyListing: (
     localPropertyId: string,
     listingId: string,
+    amount: number,
     priceWei: bigint,
     onStep: StepCb,
   ) => Promise<SavedPropertyRecord>;
@@ -400,6 +401,7 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
   const buyListing: UEstateActions["buyListing"] = async (
     localPropertyId,
     listingId,
+    amount,
     priceWei,
     onStep,
   ) => {
@@ -410,7 +412,7 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
       address: primaryValueSaleAddress as Address,
       abi: primaryValueSaleAbi,
       functionName: "buyPrimarySaleListing",
-      args: [BigInt(listingId)],
+      args: [BigInt(listingId), BigInt(amount)],
       value: priceWei,
       gas: BigInt(300_000),
       chainId: sepolia.id,

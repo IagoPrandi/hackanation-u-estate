@@ -776,7 +776,7 @@ contract PropertyRegistryTest {
         vm.deal(BOB, 10 ether);
 
         vm.prank(BOB);
-        sale.buyPrimarySaleListing{value: 3 ether}(listingId);
+        sale.buyPrimarySaleListing{value: 3 ether}(listingId, 300_000);
 
         {
             (
@@ -791,8 +791,8 @@ contract PropertyRegistryTest {
             require(storedListingId == listingId, "stored listing id mismatch");
             require(storedPropertyId == propertyId, "stored property mismatch");
             require(seller == ALICE, "seller mismatch");
-            require(amount == 300_000, "listing amount mismatch");
-            require(priceWei == 3 ether, "listing price mismatch");
+            require(amount == 0, "listing amount mismatch");
+            require(priceWei == 0, "listing price mismatch");
             require(
                 uint8(saleStatus) == uint8(ProtocolTypes.SaleStatus.Filled),
                 "listing status mismatch"
@@ -891,7 +891,7 @@ contract PropertyRegistryTest {
         vm.deal(BOB, 10 ether);
 
         vm.prank(BOB);
-        sale.buyPrimarySaleListing{value: 8 ether}(listingId);
+        sale.buyPrimarySaleListing{value: 8 ether}(listingId, 800_000);
 
         require(
             sale.totalFreeValueSoldByProperty(propertyId) == 800_000,
@@ -924,7 +924,7 @@ contract PropertyRegistryTest {
         vm.expectRevert(
             abi.encodeWithSelector(PrimaryValueSale.ListingNotFound.selector)
         );
-        sale.buyPrimarySaleListing{value: 1 ether}(999);
+        sale.buyPrimarySaleListing{value: 1 ether}(999, 1);
     }
 
     function testBuyPrimarySaleListingRejectsWrongPaymentAmount() external {
@@ -942,7 +942,7 @@ contract PropertyRegistryTest {
         vm.expectRevert(
             abi.encodeWithSelector(PrimaryValueSale.InvalidPaymentAmount.selector)
         );
-        sale.buyPrimarySaleListing{value: 2 ether}(listingId);
+        sale.buyPrimarySaleListing{value: 2 ether}(listingId, 300_000);
     }
 
     function testBuyPrimarySaleListingRejectsSellerAsBuyer() external {
@@ -962,7 +962,7 @@ contract PropertyRegistryTest {
                 PrimaryValueSale.SellerCannotBuyOwnListing.selector
             )
         );
-        sale.buyPrimarySaleListing{value: 3 ether}(listingId);
+        sale.buyPrimarySaleListing{value: 3 ether}(listingId, 300_000);
     }
 
     function testBuyPrimarySaleListingRejectsDuplicatePurchase() external {
@@ -976,14 +976,14 @@ contract PropertyRegistryTest {
 
         vm.deal(BOB, 10 ether);
         vm.prank(BOB);
-        sale.buyPrimarySaleListing{value: 3 ether}(listingId);
+        sale.buyPrimarySaleListing{value: 3 ether}(listingId, 300_000);
 
         vm.deal(address(0xB0B2), 10 ether);
         vm.prank(address(0xB0B2));
         vm.expectRevert(
             abi.encodeWithSelector(PrimaryValueSale.ListingNotActive.selector)
         );
-        sale.buyPrimarySaleListing{value: 3 ether}(listingId);
+        sale.buyPrimarySaleListing{value: 3 ether}(listingId, 300_000);
     }
 
     function testBuyPrimarySaleListingRevertsWhenSellerEthTransferFails() external {
@@ -1003,7 +1003,7 @@ contract PropertyRegistryTest {
         vm.expectRevert(
             abi.encodeWithSelector(PrimaryValueSale.EthTransferFailed.selector)
         );
-        sale.buyPrimarySaleListing{value: 3 ether}(listingId);
+        sale.buyPrimarySaleListing{value: 3 ether}(listingId, 300_000);
 
         {
             (
@@ -1049,7 +1049,7 @@ contract PropertyRegistryTest {
         vm.deal(BOB, 10 ether);
 
         vm.prank(BOB);
-        sale.buyPrimarySaleListing{value: 3 ether}(listingId);
+        sale.buyPrimarySaleListing{value: 3 ether}(listingId, 300_000);
 
         require(seller.observedFilledBeforeEth(), "filled-before-eth check failed");
         require(

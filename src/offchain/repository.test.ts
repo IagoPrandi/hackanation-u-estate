@@ -432,8 +432,8 @@ describe("property drafts", () => {
     expect(record.onchainRegistration?.primarySaleListings).toEqual([
       expect.objectContaining({
         listingId: "32",
-        amount: "300000",
-        priceWei: "60000000000000000",
+        amount: "0",
+        priceWei: "0",
         status: "Filled",
         buyerWallet: process.env.DEMO_BUYER_ADDRESS,
       }),

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SavedPropertyRecord } from "@/offchain/schemas";
-import { ethToWei, useUEstateActions, type NewPropertyForm } from "./actions";
+import { weiToEthDecimalString } from "@/lib/safe-decimal";
+import { useUEstateActions, type NewPropertyForm } from "./actions";
 import { DashboardPage } from "./dashboard";
 import {
   formatBrl,
@@ -72,7 +73,7 @@ export type AppActions = {
     localId: string,
     listingId: string,
     units: number,
-    totalPriceEth: string,
+    priceWei: bigint,
     onStep: StepCb,
   ) => Promise<void>;
   cancelListing: (
@@ -377,15 +378,15 @@ export function UEstateApp() {
   );
 
   const buyListing = useCallback<AppActions["buyListing"]>(
-    async (localId, listingId, units, totalPriceEth, onStep) => {
+    async (localId, listingId, units, priceWei, onStep) => {
       const listing = listings.find((l) => l.listingId === listingId);
       if (!listing) throw new Error("Oferta não encontrada.");
 
       if (actions.ready && localId !== listing.propertyId) {
-        const priceWei = ethToWei(totalPriceEth);
         const record = await actions.buyListing(
           localId,
           listingId,
+          units,
           priceWei,
           onStep,
         );
@@ -427,7 +428,7 @@ export function UEstateApp() {
           id: "tx-" + Date.now(),
           type: "Investimento",
           propertyTitle: prop?.title ?? "—",
-          valueEth: totalPriceEth,
+          valueEth: weiToEthDecimalString(priceWei, 8),
           status: "Confirmado",
           date: new Date().toISOString(),
           txHash: shortHash(),

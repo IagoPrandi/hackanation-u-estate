@@ -360,17 +360,31 @@ export async function savePropertyPrimarySalePurchase(
   if (existingListing.status !== "Active") {
     throw new Error("Primary sale listing is not active locally.");
   }
-  if (
-    existingListing.amount !== input.amount ||
-    existingListing.priceWei !== input.priceWei
-  ) {
-    throw new Error("Primary sale purchase does not match the saved listing.");
+  const remainingAmount = BigInt(existingListing.amount);
+  const remainingPriceWei = BigInt(existingListing.priceWei);
+  const purchaseAmount = BigInt(input.amount);
+  const purchasePriceWei = BigInt(input.priceWei);
+  if (purchaseAmount > remainingAmount) {
+    throw new Error(
+      "Primary sale purchase amount exceeds the saved listing amount.",
+    );
   }
+  if (purchasePriceWei > remainingPriceWei) {
+    throw new Error(
+      "Primary sale purchase price exceeds the saved listing price.",
+    );
+  }
+
+  const nextListingAmount = remainingAmount - purchaseAmount;
+  const nextListingPriceWei = remainingPriceWei - purchasePriceWei;
+  const listingFilled = nextListingAmount === 0n;
 
   const updatedListings = [...listings];
   updatedListings[listingIndex] = {
     ...existingListing,
-    status: "Filled",
+    amount: nextListingAmount.toString(),
+    priceWei: nextListingPriceWei.toString(),
+    status: listingFilled ? "Filled" : "Active",
     buyerWallet: input.buyerWallet,
     purchaseTxHash: input.txHash,
     purchasedAt: new Date().toISOString(),
@@ -378,11 +392,14 @@ export async function savePropertyPrimarySalePurchase(
 
   const activeEscrowedAmount = (
     BigInt(property.onchainRegistration.activeEscrowedAmount ?? "0") -
-    BigInt(input.amount)
+    purchaseAmount
   ).toString();
-  const activeListingsCount = (
-    BigInt(property.onchainRegistration.activeListingsCount ?? "0") - BigInt(1)
-  ).toString();
+  const activeListingsCount = listingFilled
+    ? (
+        BigInt(property.onchainRegistration.activeListingsCount ?? "0") -
+        BigInt(1)
+      ).toString()
+    : (property.onchainRegistration.activeListingsCount ?? "0");
   const totalFreeValueSold = (
     BigInt(property.onchainRegistration.totalFreeValueSold ?? "0") +
     BigInt(input.amount)

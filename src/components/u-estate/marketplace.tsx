@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import type { AppActions } from "./app";
+import { ethToWei } from "./actions";
 import {
   formatBrl,
   formatEth,
   formatUnits,
   formatUsd,
 } from "./data";
+import { weiToEthDecimalString } from "@/lib/safe-decimal";
 import {
   IconCheck,
   IconCoins,
@@ -317,8 +319,11 @@ export function ListingDetailPage({
   navigate: Navigate;
   actions: AppActions;
 }) {
-  const initial = listing ? Math.min(5000, listing.amount) : 0;
-  const [units, setUnits] = useState(initial);
+  const minUnits = 1000;
+  const initialUnits = listing
+    ? Math.min(5000, Math.max(minUnits, listing.amount))
+    : 0;
+  const [units, setUnits] = useState(initialUnits);
   const [tx, setTx] = useState<{ open: boolean; step: TxStep }>({
     open: false,
     step: "sign",
@@ -332,9 +337,14 @@ export function ListingDetailPage({
       </div>
     );
 
-  const pricePerUnit = Number(listing.priceWei) / listing.amount;
-  const minUnits = 1000;
-  const totalPrice = pricePerUnit * units;
+  const TOTAL_VALUE_UNITS = 1_000_000n;
+  const marketValueWei = ethToWei(property.marketValueEth);
+  const payWei = (marketValueWei * BigInt(units)) / TOTAL_VALUE_UNITS;
+  const totalPrice = Number(weiToEthDecimalString(payWei, 18));
+  const pricePerUnit =
+    listing.amount > 0
+      ? Number(listing.priceWei) / listing.amount
+      : 0;
   const pctOfProp = (units / property.totalValueUnits) * 100;
   const offerPctOfProp = (listing.amount / property.totalValueUnits) * 100;
 
@@ -346,7 +356,7 @@ export function ListingDetailPage({
         property.id,
         listing.listingId,
         units,
-        totalPrice.toFixed(6),
+        payWei,
         (s) => setTx({ open: true, step: s }),
       );
     } catch (error) {
@@ -640,7 +650,7 @@ export function ListingDetailPage({
               <input
                 type="range"
                 className="range-orange"
-                min={minUnits}
+                min={Math.min(minUnits, listing.amount)}
                 max={listing.amount}
                 step="1000"
                 value={units}

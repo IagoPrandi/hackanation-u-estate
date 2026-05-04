@@ -179,7 +179,8 @@ contract PrimaryValueSale {
     }
 
     function buyPrimarySaleListing(
-        uint256 listingId
+        uint256 listingId,
+        uint256 amount
     ) external payable nonReentrant {
         if (!listingExists[listingId]) {
             revert ListingNotFound();
@@ -190,12 +191,12 @@ contract PrimaryValueSale {
             revert ListingNotActive();
         }
 
-        if (msg.value != listing.priceWei) {
-            revert InvalidPaymentAmount();
-        }
-
         if (msg.sender == listing.seller) {
             revert SellerCannotBuyOwnListing();
+        }
+
+        if (amount == 0 || amount > listing.amount) {
+            revert InvalidAmount();
         }
 
         PropertyRegistry registryContract = PropertyRegistry(registry);
@@ -206,7 +207,7 @@ contract PrimaryValueSale {
         (
             ,
             ,
-            ,
+            uint256 marketValueWei,
             ,
             ,
             uint256 freeValueUnits,
@@ -224,14 +225,33 @@ contract PrimaryValueSale {
             revert InvalidPropertyStatus();
         }
 
-        ProtocolTypes.SaleStatus previousStatus = listing.status;
-        listing.status = ProtocolTypes.SaleStatus.Filled;
+        uint256 payWei = (marketValueWei * amount) /
+            ProtocolTypes.TOTAL_VALUE_UNITS;
+        if (payWei == 0) {
+            revert PriceZero();
+        }
+        if (msg.value != payWei) {
+            revert InvalidPaymentAmount();
+        }
+
+        listing.amount -= amount;
+        listing.priceWei = listing.priceWei > payWei
+            ? listing.priceWei - payWei
+            : 0;
 
         unchecked {
-            activeListingsCountByProperty[listing.propertyId] -= 1;
-            activeEscrowedAmountByProperty[listing.propertyId] -= listing.amount;
+            activeEscrowedAmountByProperty[listing.propertyId] -= amount;
         }
-        totalFreeValueSoldByProperty[listing.propertyId] += listing.amount;
+        totalFreeValueSoldByProperty[listing.propertyId] += amount;
+
+        bool listingFilled = listing.amount == 0;
+        ProtocolTypes.SaleStatus previousStatus = listing.status;
+        if (listingFilled) {
+            listing.status = ProtocolTypes.SaleStatus.Filled;
+            unchecked {
+                activeListingsCountByProperty[listing.propertyId] -= 1;
+            }
+        }
 
         ProtocolTypes.PropertyStatus nextPropertyStatus;
         if (totalFreeValueSoldByProperty[listing.propertyId] == freeValueUnits) {
@@ -245,19 +265,21 @@ contract PrimaryValueSale {
         registryContract.syncPropertySaleStatus(listing.propertyId, nextPropertyStatus);
         registryContract.addParticipantFromSale(listing.propertyId, msg.sender);
 
-        emit ListingStatusUpdated(
-            listingId,
-            previousStatus,
-            ProtocolTypes.SaleStatus.Filled
-        );
+        if (listingFilled) {
+            emit ListingStatusUpdated(
+                listingId,
+                previousStatus,
+                ProtocolTypes.SaleStatus.Filled
+            );
+        }
 
         PropertyValueToken(valueTokenAddress).operatorTransfer(
             address(this),
             msg.sender,
-            listing.amount
+            amount
         );
 
-        (bool ok, ) = listing.seller.call{value: listing.priceWei}("");
+        (bool ok, ) = listing.seller.call{value: payWei}("");
         if (!ok) {
             revert EthTransferFailed();
         }
@@ -267,10 +289,10 @@ contract PrimaryValueSale {
             listing.propertyId,
             msg.sender,
             listing.seller,
-            listing.amount,
-            listing.priceWei
+            amount,
+            payWei
         );
-        emit SellerPaid(listingId, listing.seller, listing.priceWei);
+        emit SellerPaid(listingId, listing.seller, payWei);
     }
 
     function cancelPrimarySaleListing(uint256 listingId) external nonReentrant {

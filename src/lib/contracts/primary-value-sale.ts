@@ -15,7 +15,10 @@ export const primaryValueSaleAbi = [
     type: "function",
     stateMutability: "payable",
     name: "buyPrimarySaleListing",
-    inputs: [{ name: "listingId", type: "uint256" }],
+    inputs: [
+      { name: "listingId", type: "uint256" },
+      { name: "amount", type: "uint256" },
+    ],
     outputs: [],
   },
   {
