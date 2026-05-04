@@ -43,15 +43,18 @@ function ownerJourney(p: Property) {
     },
     {
       key: "review",
-      label: "Análise",
+      label: p.status === "Rejected" ? "Análise reprovada" : "Análise",
       sub:
-        p.status === "PendingMockVerification"
-          ? "Validando documentos com a equipe…"
-          : "Documentos validados.",
+        p.status === "Rejected"
+          ? p.rejection?.reason ?? "Documentação rejeitada pelo validador."
+          : p.status === "PendingMockVerification"
+            ? "Validando documentos com a equipe…"
+            : "Documentos validados.",
       done: (
         ["MockVerified", "Tokenized", "ActiveSale", "SoldOut"] as PropertyStatus[]
       ).includes(p.status),
-      active: p.status === "PendingMockVerification",
+      active:
+        p.status === "PendingMockVerification" || p.status === "Rejected",
     },
     {
       key: "publish",
@@ -140,15 +143,7 @@ export function PropertyDetailPage({
 
   const primary = (() => {
     if (p.status === "PendingMockVerification")
-      return {
-        label: "Aprovar análise",
-        go: () =>
-          runChainAction("Aprovando análise", (onStep) =>
-            actions.verifyProperty(p.id, p.propertyId, onStep),
-          ),
-        disabled: false,
-        primary: true,
-      };
+      return null;
     if (p.status === "MockVerified")
       return {
         label: "Tokenizar imóvel",
@@ -207,6 +202,34 @@ export function PropertyDetailPage({
           </>
         }
       />
+
+      {p.status === "Rejected" && p.rejection && (
+        <div
+          className="card card-pad mb-24"
+          style={{
+            background: "var(--color-danger-soft)",
+            borderColor: "var(--color-danger)",
+            borderLeft: "4px solid var(--color-danger)",
+          }}
+        >
+          <div
+            className="row row-gap fw-700 text-sm"
+            style={{ color: "var(--color-danger)" }}
+          >
+            Análise reprovada pelo validador
+          </div>
+          <div
+            className="text-sm mt-12"
+            style={{ color: "var(--color-charcoal)", lineHeight: 1.55 }}
+          >
+            {p.rejection.reason}
+          </div>
+          <div className="muted text-xs" style={{ marginTop: 8 }}>
+            Reprovado em{" "}
+            {new Date(p.rejection.rejectedAt).toLocaleString("pt-BR")}
+          </div>
+        </div>
+      )}
 
       <div className="grid-2-1">
         <div className="col col-gap-lg">
@@ -978,7 +1001,7 @@ export function PropertyPublishPage({
   const [pctOfProperty, setPctOfProperty] = useState(
     Math.round(maxPctOfProperty * 0.5),
   );
-  const [duration, setDuration] = useState(7);
+  const [duration, setDuration] = useState(30);
   const [tx, setTx] = useState<{ open: boolean; step: TxStep }>({
     open: false,
     step: "sign",
@@ -1160,13 +1183,18 @@ export function PropertyPublishPage({
               Por quanto tempo a oferta fica no ar?
             </div>
             <div className="row row-gap mt-16" style={{ flexWrap: "wrap" }}>
-              {[3, 7, 14, 30].map((d) => (
+              {([
+                { days: 30, label: "1 mês" },
+                { days: 120, label: "4 meses" },
+                { days: 365, label: "1 ano" },
+                { days: 730, label: "2 anos" },
+              ] as { days: number; label: string }[]).map(({ days, label }) => (
                 <button
-                  key={d}
-                  className={"btn " + (duration === d ? "btn-primary" : "btn-neutral")}
-                  onClick={() => setDuration(d)}
+                  key={days}
+                  className={"btn " + (duration === days ? "btn-primary" : "btn-neutral")}
+                  onClick={() => setDuration(days)}
                 >
-                  {d} dias
+                  {label}
                 </button>
               ))}
             </div>
@@ -1289,7 +1317,9 @@ export function PropertyPublishPage({
               </div>
               <div className="row-between mt-12">
                 <span className="muted text-sm">Duração</span>
-                <strong>{duration} dias</strong>
+                <strong>
+                  {duration === 30 ? "1 mês" : duration === 120 ? "4 meses" : duration === 365 ? "1 ano" : "2 anos"}
+                </strong>
               </div>
             </div>
           </div>

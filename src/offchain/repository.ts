@@ -507,6 +507,94 @@ export async function savePropertyPrimarySaleCancellation(
   return property;
 }
 
+export async function saveValidatorApproval(
+  localPropertyId: string,
+): Promise<SavedPropertyRecord> {
+  const db = await getDb();
+  const property = db.data.properties.find(
+    (record) => record.localPropertyId === localPropertyId,
+  );
+  if (!property) throw new Error("Property draft not found.");
+
+  const dummyHash =
+    "0x1111111111111111111111111111111111111111111111111111111111111111";
+  const now = new Date().toISOString();
+
+  if (property.onchainRegistration) {
+    if (property.onchainRegistration.status !== "PendingMockVerification") {
+      throw new Error("Property is not pending verification.");
+    }
+    property.onchainRegistration.status = "MockVerified";
+    property.onchainRegistration.verificationTxHash = dummyHash;
+    property.onchainRegistration.verifiedAt = now;
+    delete property.onchainRegistration.rejection;
+  } else {
+    // Create a minimal mock registration + verification for draft-only properties
+    const seed = localPropertyId.replace(/-/g, "");
+    const mockPropertyId = String(
+      (parseInt(seed.slice(0, 8), 16) % 9000) + 1000,
+    );
+    property.onchainRegistration = {
+      propertyId: mockPropertyId,
+      txHash: dummyHash,
+      status: "MockVerified",
+      registeredAt: now,
+      verifiedAt: now,
+      verificationTxHash: dummyHash,
+    };
+  }
+
+  await db.write();
+  return property;
+}
+
+export async function saveValidatorRejection(
+  localPropertyId: string,
+  reason: string,
+): Promise<SavedPropertyRecord> {
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) {
+    throw new Error("Rejection reason is required.");
+  }
+  const db = await getDb();
+  const property = db.data.properties.find(
+    (record) => record.localPropertyId === localPropertyId,
+  );
+  if (!property) throw new Error("Property draft not found.");
+
+  const dummyHash =
+    "0x2222222222222222222222222222222222222222222222222222222222222222";
+  const now = new Date().toISOString();
+  const rejection = { reason: trimmedReason, rejectedAt: now };
+
+  if (property.onchainRegistration) {
+    if (property.onchainRegistration.status !== "PendingMockVerification") {
+      throw new Error("Property is not pending verification.");
+    }
+    property.onchainRegistration.status = "Rejected";
+    property.onchainRegistration.verificationTxHash = dummyHash;
+    property.onchainRegistration.verifiedAt = now;
+    property.onchainRegistration.rejection = rejection;
+  } else {
+    const seed = localPropertyId.replace(/-/g, "");
+    const mockPropertyId = String(
+      (parseInt(seed.slice(0, 8), 16) % 9000) + 1000,
+    );
+    property.onchainRegistration = {
+      propertyId: mockPropertyId,
+      txHash: dummyHash,
+      status: "Rejected",
+      registeredAt: now,
+      verifiedAt: now,
+      verificationTxHash: dummyHash,
+      rejection,
+    };
+  }
+
+  await db.write();
+  return property;
+}
+
 function resolveDemoWalletAddress(
   value: string | undefined,
   fallback: Address,

@@ -59,13 +59,19 @@ function OwnerDashboard({
 
   const recommendedAction = (() => {
     if (!recommended) return null;
-    if (
-      recommended.status === "MockVerified" ||
-      recommended.status === "Tokenized"
-    ) {
+    if (recommended.status === "MockVerified") {
+      return {
+        title: `Tokenize ${recommended.title}`,
+        body: "Seus documentos foram aprovados. Tokenize o imóvel para gerar o direito de uso e o direito sobre o valor antes de publicar uma oferta.",
+        cta: "Tokenizar imóvel",
+        go: () => navigate("property", { id: recommended.id }),
+        muted: false,
+      };
+    }
+    if (recommended.status === "Tokenized") {
       return {
         title: `Disponibilize ${recommended.title}`,
-        body: `Seus documentos foram aprovados. Você pode captar até ${(
+        body: `Seu imóvel já está tokenizado. Você pode captar até ${(
           Number(recommended.marketValueEth) *
           (recommended.freeValueUnits / recommended.totalValueUnits)
         ).toFixed(3)} ETH liberando uma parte do imóvel.`,

@@ -13,10 +13,12 @@ import {
   IconCopy,
   IconHome,
   IconMapPin,
+  IconMenu,
   IconPlus,
   IconReceipt,
   IconSearch,
   IconSettings,
+  IconShield,
   IconStore,
   IconWallet,
   IconX,
@@ -47,6 +49,7 @@ const STATUS_MAP: Record<
     cls: "badge badge-orange",
   },
   SoldOut: { label: "Esgotado", cls: "badge badge-charcoal" },
+  Rejected: { label: "Reprovado", cls: "badge badge-danger" },
 };
 
 export function StatusPill({
@@ -142,6 +145,15 @@ export function Sidebar({
       )}
 
       <div className="sidebar-section-label">Mais</div>
+      <a
+        href="/validator"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="sidebar-link"
+        style={{ textDecoration: "none" }}
+      >
+        <IconShield className="ico" /> Área de validadores
+      </a>
       {learn.map((it) => {
         const Ico = it.icon;
         return (
@@ -172,6 +184,7 @@ export function Topbar({
   setRole,
   navigate,
   wallet,
+  onToggleSidebar,
 }: {
   user: User;
   role: Role;
@@ -179,16 +192,26 @@ export function Topbar({
   navigate: Navigate;
   route: Route;
   wallet: WalletState;
+  onToggleSidebar: () => void;
 }) {
   return (
     <div className="topbar">
-      <div className="topbar-search">
-        <IconSearch size={16} />
-        <span>
-          {role === "buyer"
-            ? "Buscar imóvel disponível…"
-            : "Buscar nos seus imóveis…"}
-        </span>
+      <div className="row row-gap">
+        <button
+          className="sidebar-toggle-btn"
+          onClick={onToggleSidebar}
+          title="Mostrar/ocultar menu"
+        >
+          <IconMenu size={16} />
+        </button>
+        <div className="topbar-search">
+          <IconSearch size={16} />
+          <span>
+            {role === "buyer"
+              ? "Buscar imóvel disponível…"
+              : "Buscar nos seus imóveis…"}
+          </span>
+        </div>
       </div>
       <div className="topbar-right">
         <div
@@ -214,6 +237,16 @@ export function Topbar({
             Quero investir
           </button>
         </div>
+        <a
+          href="/validator"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-neutral btn-sm"
+          style={{ textDecoration: "none", gap: 6 }}
+          title="Acessar painel de validadores (área operacional)"
+        >
+          <IconShield size={14} /> Validadores
+        </a>
         <button className="btn btn-neutral btn-sm" style={{ padding: "8px" }}>
           <IconBell size={16} />
         </button>

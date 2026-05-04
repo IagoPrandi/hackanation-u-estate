@@ -64,6 +64,15 @@ export function LandingPage({
           <a onClick={(e) => { e.preventDefault(); document.getElementById("beneficios")?.scrollIntoView({ behavior: "smooth" }); }}>Benefícios</a>
         </div>
         <div className="row row-gap">
+          <a
+            href="/validator"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-ghost btn-sm"
+            style={{ textDecoration: "none" }}
+          >
+            <IconShield size={14} /> Validadores
+          </a>
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => navigate("learn")}

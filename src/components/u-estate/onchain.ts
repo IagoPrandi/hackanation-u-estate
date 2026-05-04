@@ -79,6 +79,7 @@ export function recordToProperty(record: SavedPropertyRecord): Property {
     usufructTokenId: onchain?.usufructTokenId,
     ownerWallet: record.ownerWallet,
     createdAt: record.createdAt,
+    rejection: onchain?.rejection,
   };
 }
 

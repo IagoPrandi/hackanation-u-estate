@@ -248,3 +248,8 @@ export const IconNetwork = (p: IconProps) => (
     <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2" />
   </Base>
 );
+export const IconMenu = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M3 12h18M3 6h18M3 18h18" />
+  </Base>
+);

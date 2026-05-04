@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { AppActions } from "./app";
 import { formatBrl, formatUsd } from "./data";
 import {
@@ -30,6 +30,17 @@ import type {
   TxStep,
 } from "./types";
 
+type ValueCurrency = "eth" | "usdc" | "usdt";
+
+const ETH_RATE = 2350; // USD per ETH
+
+function toEth(raw: string, currency: ValueCurrency): string {
+  const n = Number(raw);
+  if (!raw || isNaN(n) || n <= 0) return "";
+  if (currency === "eth") return raw;
+  return (n / ETH_RATE).toFixed(6);
+}
+
 export function PropertiesPage({
   properties,
   navigate,
@@ -38,19 +49,17 @@ export function PropertiesPage({
   navigate: Navigate;
 }) {
   const [filter, setFilter] = useState<
-    "all" | "available" | "review" | "ready" | "soldout"
+    "all" | "available" | "review" | "ready" | "soldout" | "rejected"
   >("all");
-  const filtered = properties.filter((p) =>
-    filter === "all"
-      ? true
-      : filter === "available"
-        ? p.status === "ActiveSale"
-        : filter === "review"
-          ? p.status === "PendingMockVerification"
-          : filter === "ready"
-            ? p.status === "MockVerified" || p.status === "Tokenized"
-            : p.status === "SoldOut",
-  );
+  const filtered = properties.filter((p) => {
+    if (filter === "all") return true;
+    if (filter === "available") return p.status === "ActiveSale";
+    if (filter === "review") return p.status === "PendingMockVerification";
+    if (filter === "ready")
+      return p.status === "MockVerified" || p.status === "Tokenized";
+    if (filter === "rejected") return p.status === "Rejected";
+    return p.status === "SoldOut";
+  });
 
   const counts: [typeof filter, string, number][] = [
     ["all", "Todos", properties.length],
@@ -58,6 +67,11 @@ export function PropertiesPage({
       "review",
       "Em análise",
       properties.filter((p) => p.status === "PendingMockVerification").length,
+    ],
+    [
+      "rejected",
+      "Reprovados",
+      properties.filter((p) => p.status === "Rejected").length,
     ],
     [
       "ready",
@@ -136,7 +150,8 @@ type FormState = {
   postalCode: string;
   lat: string;
   lng: string;
-  marketValueEth: string;
+  valueCurrency: ValueCurrency;
+  marketValueInput: string;
   reservedPct: number;
   documents: PropertyDocument[];
 };
@@ -160,7 +175,8 @@ export function PropertyNewPage({
     postalCode: "",
     lat: "",
     lng: "",
-    marketValueEth: "",
+    valueCurrency: "eth",
+    marketValueInput: "",
     reservedPct: 20,
     documents: [],
   });
@@ -170,6 +186,36 @@ export function PropertyNewPage({
   });
   const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // File input refs per document type
+  const deedRef = useRef<HTMLInputElement>(null);
+  const ownerIdRef = useRef<HTMLInputElement>(null);
+  const taxRef = useRef<HTMLInputElement>(null);
+
+  const refsByType: Record<DocumentType, React.RefObject<HTMLInputElement | null>> = {
+    mock_deed: deedRef,
+    mock_owner_id: ownerIdRef,
+    mock_tax_record: taxRef,
+  };
+
+  const handleFileSelect = (type: DocumentType, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setData((d) => ({
+      ...d,
+      documents: [
+        ...d.documents.filter((doc) => doc.type !== type),
+        { type, filename: file.name },
+      ],
+    }));
+    e.target.value = "";
+  };
+
+  const removeDoc = (i: number) =>
+    setData((d) => ({
+      ...d,
+      documents: d.documents.filter((_, j) => j !== i),
+    }));
 
   const update = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setData((d) => ({ ...d, [k]: v }));
@@ -200,28 +246,12 @@ export function PropertyNewPage({
       desc: "Opcional — ajuda a verificação.",
     },
   ];
-  const addMockDoc = (type: DocumentType) => {
-    const labels: Record<DocumentType, string> = {
-      mock_deed: "matricula",
-      mock_owner_id: "documento_identidade",
-      mock_tax_record: "iptu_2026",
-    };
-    setData((d) => ({
-      ...d,
-      documents: [...d.documents, { type, filename: labels[type] + ".pdf" }],
-    }));
-  };
-  const removeDoc = (i: number) =>
-    setData((d) => ({
-      ...d,
-      documents: d.documents.filter((_, j) => j !== i),
-    }));
+
+  const marketValueEth = toEth(data.marketValueInput, data.valueCurrency);
 
   const canNext = () => {
     if (step === 0)
-      return Boolean(
-        data.title && data.marketValueEth && Number(data.marketValueEth) > 0,
-      );
+      return Boolean(data.title && marketValueEth && Number(marketValueEth) > 0);
     if (step === 1) return Boolean(data.street && data.city && data.state);
     if (step === 2) return data.documents.length >= 1;
     return true;
@@ -233,7 +263,7 @@ export function PropertyNewPage({
     try {
       const created = await actions.submitProperty(
         {
-          marketValueEth: data.marketValueEth,
+          marketValueEth,
           reservedPct: data.reservedPct,
           description: data.description,
           street: data.street,
@@ -264,6 +294,26 @@ export function PropertyNewPage({
     } else {
       navigate("properties");
     }
+  };
+
+  const currencyLabels: Record<ValueCurrency, string> = {
+    eth: "ETH",
+    usdc: "USDC",
+    usdt: "USDT",
+  };
+
+  const currencyHelp = () => {
+    const n = Number(data.marketValueInput);
+    if (!data.marketValueInput || isNaN(n) || n <= 0) {
+      if (data.valueCurrency === "eth")
+        return "Valor de mercado estimado em ETH.";
+      return `Valor de mercado estimado em ${currencyLabels[data.valueCurrency]} (1:1 com USD).`;
+    }
+    if (data.valueCurrency === "eth") {
+      return `Equivalente: ${formatUsd(data.marketValueInput)} · ${formatBrl(data.marketValueInput)}`;
+    }
+    const eth = Number(marketValueEth);
+    return `≈ ${eth.toFixed(6)} ETH · ${formatBrl(eth)}`;
   };
 
   return (
@@ -334,27 +384,32 @@ export function PropertyNewPage({
               </div>
               <div className="field">
                 <label className="field-label">Avaliação do imóvel</label>
-                <div className="input-prefix">
-                  <input
-                    className="input mono"
-                    type="number"
-                    step="0.001"
-                    placeholder="0.000"
-                    value={data.marketValueEth}
-                    onChange={(e) => update("marketValueEth", e.target.value)}
-                  />
-                  <span className="suffix">ETH</span>
+                <div className="col col-gap-sm">
+                  <div className="currency-selector">
+                    {(["eth", "usdc", "usdt"] as ValueCurrency[]).map((c) => (
+                      <button
+                        key={c}
+                        className={"currency-btn" + (data.valueCurrency === c ? " active" : "")}
+                        onClick={() => update("valueCurrency", c)}
+                        type="button"
+                      >
+                        {currencyLabels[c]}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="input-prefix">
+                    <input
+                      className="input mono"
+                      type="number"
+                      step={data.valueCurrency === "eth" ? "0.001" : "1000"}
+                      placeholder={data.valueCurrency === "eth" ? "0.000" : "200000"}
+                      value={data.marketValueInput}
+                      onChange={(e) => update("marketValueInput", e.target.value)}
+                    />
+                    <span className="suffix">{currencyLabels[data.valueCurrency]}</span>
+                  </div>
                 </div>
-                {data.marketValueEth ? (
-                  <span className="field-help">
-                    Equivalente: {formatUsd(data.marketValueEth)} ·{" "}
-                    {formatBrl(data.marketValueEth)}
-                  </span>
-                ) : (
-                  <span className="field-help">
-                    Valor de mercado estimado em ETH.
-                  </span>
-                )}
+                <span className="field-help">{currencyHelp()}</span>
               </div>
               <div className="field">
                 <label className="field-label">
@@ -492,6 +547,7 @@ export function PropertyNewPage({
               <div className="col col-gap">
                 {docTypes.map((dt) => {
                   const has = data.documents.find((d) => d.type === dt.type);
+                  const ref = refsByType[dt.type];
                   return (
                     <div
                       key={dt.type}
@@ -505,6 +561,13 @@ export function PropertyNewPage({
                           : "var(--color-surface)",
                       }}
                     >
+                      <input
+                        type="file"
+                        ref={ref}
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        style={{ display: "none" }}
+                        onChange={(e) => handleFileSelect(dt.type, e)}
+                      />
                       <div
                         style={{
                           width: 44,
@@ -546,7 +609,7 @@ export function PropertyNewPage({
                       ) : (
                         <button
                           className="btn btn-neutral btn-sm"
-                          onClick={() => addMockDoc(dt.type)}
+                          onClick={() => ref.current?.click()}
                         >
                           <IconUpload size={14} /> Anexar
                         </button>
@@ -593,8 +656,11 @@ export function PropertyNewPage({
                   <div className="divider-dashed" />
                   <div className="muted text-xs">Avaliação</div>
                   <div className="mono fw-700 text-lg">
-                    {data.marketValueEth || "0"} ETH
+                    {data.marketValueInput || "0"} {currencyLabels[data.valueCurrency]}
                   </div>
+                  {data.valueCurrency !== "eth" && marketValueEth && (
+                    <div className="muted text-xs">≈ {marketValueEth} ETH</div>
+                  )}
                 </div>
                 <div
                   className="card card-pad"
@@ -613,7 +679,7 @@ export function PropertyNewPage({
                   <div className="fw-800 text-lg mt-12">
                     até{" "}
                     {(
-                      (Number(data.marketValueEth || 0) *
+                      (Number(marketValueEth || 0) *
                         (100 - data.reservedPct)) /
                       100
                     ).toFixed(3)}{" "}
@@ -744,11 +810,14 @@ export function PropertyNewPage({
               <div className="divider-dashed" />
               <div className="muted text-xs">Avaliação</div>
               <div className="fw-800 text-xl mono">
-                {data.marketValueEth || "0.000"} ETH
+                {data.marketValueInput || "0.000"} {currencyLabels[data.valueCurrency]}
               </div>
-              {data.marketValueEth && (
+              {data.marketValueInput && data.valueCurrency !== "eth" && (
+                <div className="muted text-sm">≈ {marketValueEth} ETH</div>
+              )}
+              {data.marketValueInput && data.valueCurrency === "eth" && (
                 <div className="muted text-sm">
-                  ≈ {formatUsd(data.marketValueEth)}
+                  ≈ {formatUsd(data.marketValueInput)}
                 </div>
               )}
             </div>

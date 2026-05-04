@@ -1271,3 +1271,54 @@ input[type="range"].range-orange::-moz-range-thumb {
   .footer { padding: 24px 16px; flex-direction: column; gap: 12px; }
   .grid-2 { grid-template-columns: 1fr; }
 }
+
+/* ===== SIDEBAR TOGGLE ===== */
+.app-shell.sidebar-hidden {
+  grid-template-columns: 0 1fr;
+}
+.app-shell.sidebar-hidden .sidebar {
+  overflow: hidden;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  min-width: 0;
+}
+.sidebar { transition: opacity 0.2s ease; }
+.sidebar-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-charcoal-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.sidebar-toggle-btn:hover { border-color: var(--color-charcoal); color: var(--color-charcoal); background: var(--color-surface-soft); }
+
+/* ===== CURRENCY SELECTOR ===== */
+.currency-selector {
+  display: flex;
+  gap: 4px;
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  width: fit-content;
+}
+.currency-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font-mono);
+}
+.currency-btn.active { background: var(--color-charcoal); color: #fff; }
+.currency-btn:hover:not(.active) { color: var(--color-charcoal); }

@@ -178,6 +178,7 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
         draft.documentsHash as Hex,
         draft.locationHash as Hex,
       ],
+      gas: BigInt(500_000),
       chainId: sepolia.id,
     });
 
@@ -223,6 +224,7 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
       abi: propertyRegistryAbi,
       functionName: "mockVerifyProperty",
       args: [BigInt(onchainPropertyId)],
+      gas: BigInt(200_000),
       chainId: sepolia.id,
     });
     onStep("sent");
@@ -258,12 +260,57 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
     onStep,
   ) => {
     requireReady();
+
+    // The validator approval only updates the off-chain DB. If the on-chain
+    // mockVerifyProperty hasn't been broadcast yet, tokenizeProperty will
+    // revert because the contract still sees the property as pending. Try
+    // to flip the on-chain state first; if it was already verified the
+    // call reverts and we proceed straight to tokenization.
+    onStep("sign");
+    try {
+      const verifyTx = await writeContractAsync({
+        address: propertyRegistryAddress as Address,
+        abi: propertyRegistryAbi,
+        functionName: "mockVerifyProperty",
+        args: [BigInt(onchainPropertyId)],
+        gas: BigInt(200_000),
+        chainId: sepolia.id,
+      });
+      const verifyReceipt = await waitForTransactionReceipt(config, {
+        hash: verifyTx,
+        chainId: sepolia.id,
+      });
+      const [verifiedLog] = parseEventLogs({
+        abi: propertyRegistryAbi,
+        eventName: "PropertyMockVerified",
+        logs: verifyReceipt.logs,
+        strict: true,
+      });
+      if (verifiedLog) {
+        await patchOnchainSync({
+          kind: "mockVerification",
+          localPropertyId,
+          propertyId: verifiedLog.args.propertyId.toString(),
+          txHash: verifyReceipt.transactionHash,
+        });
+      }
+    } catch (err) {
+      // Already verified on-chain (or user rejected the prompt). If the user
+      // rejected, the next call will also fail and we'll surface the error.
+      // Any contract revert here means the property is already past the
+      // pending state on-chain, which is fine — proceed to tokenize.
+      const message = err instanceof Error ? err.message : "";
+      const isUserReject = /reject|denied|cancel/i.test(message);
+      if (isUserReject) throw err;
+    }
+
     onStep("sign");
     const txHash = await writeContractAsync({
       address: propertyRegistryAddress as Address,
       abi: propertyRegistryAbi,
       functionName: "tokenizeProperty",
       args: [BigInt(onchainPropertyId)],
+      gas: BigInt(2_500_000),
       chainId: sepolia.id,
     });
     onStep("sent");
@@ -317,6 +364,7 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
       abi: primaryValueSaleAbi,
       functionName: "createPrimarySaleListing",
       args: [BigInt(onchainPropertyId), BigInt(units)],
+      gas: BigInt(400_000),
       chainId: sepolia.id,
     });
     onStep("sent");
@@ -411,6 +459,7 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
       abi: primaryValueSaleAbi,
       functionName: "cancelPrimarySaleListing",
       args: [BigInt(listingId)],
+      gas: BigInt(200_000),
       chainId: sepolia.id,
     });
     onStep("sent");

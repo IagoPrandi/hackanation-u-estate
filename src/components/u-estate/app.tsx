@@ -115,6 +115,7 @@ export function UEstateApp() {
     [userBase, wallet.address],
   );
   const [chainMode, setChainMode] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const navigate: Navigate = useCallback((name: RouteName, params = {}) => {
     setRoute({ name, params });
@@ -156,6 +157,26 @@ export function UEstateApp() {
       setTransactions(initialTransactions);
       setChainMode(false);
     }
+    // Whenever the wallet identity changes, drop any in-progress per-property
+    // route so the user does not stay on a foreign wallet's detail/publish page.
+    setRoute((prev) =>
+      prev.name === "property" || prev.name === "property-publish"
+        ? { name: "dashboard", params: {} }
+        : prev,
+    );
+  }, [wallet.address, refreshFromApi]);
+
+  // Poll the off-chain DB while a wallet is connected so that validator
+  // decisions (approve/reject) and other out-of-band state changes show up
+  // without requiring a manual reload. Pauses when the tab is hidden.
+  useEffect(() => {
+    if (!wallet.address) return;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void refreshFromApi();
+      }
+    }, 8000);
+    return () => window.clearInterval(interval);
   }, [wallet.address, refreshFromApi]);
 
   const submitProperty = useCallback<AppActions["submitProperty"]>(
@@ -204,6 +225,7 @@ export function UEstateApp() {
         documentsHash: shortHash(),
         locationHash: shortHash(),
         createdAt: new Date().toISOString(),
+        ownerWallet: wallet.address ?? undefined,
       };
       setProperties((prev) => [property, ...prev]);
       setTransactions((prev) => [
@@ -463,7 +485,31 @@ export function UEstateApp() {
   void formatBrl;
   void formatUsd;
 
+  const walletAddr = wallet.address?.toLowerCase();
+
+  const myProperties = useMemo(() => {
+    if (!walletAddr) return properties;
+    return properties.filter(
+      (p) => p.ownerWallet && p.ownerWallet.toLowerCase() === walletAddr,
+    );
+  }, [properties, walletAddr]);
+
+  const myListings = useMemo(() => {
+    if (!walletAddr) return listings;
+    return listings.filter(
+      (l) => l.seller && l.seller.toLowerCase() === walletAddr,
+    );
+  }, [listings, walletAddr]);
+
+  const myTransactions = useMemo(() => {
+    if (!walletAddr) return transactions;
+    const titles = new Set(myProperties.map((p) => p.title));
+    return transactions.filter((t) => titles.has(t.propertyTitle));
+  }, [transactions, myProperties, walletAddr]);
+
   const findProp = () => properties.find((p) => p.id === route.params.id);
+  const findOwnedProp = () =>
+    myProperties.find((p) => p.id === route.params.id);
   const findListing = () =>
     listings.find((l) => l.listingId === route.params.id);
 
@@ -476,26 +522,17 @@ export function UEstateApp() {
       case "dashboard":
         return (
           <DashboardPage
-            properties={properties}
-            listings={listings}
-            transactions={transactions}
+            properties={role === "buyer" ? properties : myProperties}
+            listings={role === "buyer" ? listings : myListings}
+            transactions={role === "buyer" ? transactions : myTransactions}
             navigate={navigate}
             role={role}
           />
         );
-      case "properties": {
-        const ownedProperties =
-          chainMode && wallet.address
-            ? properties.filter(
-                (p) =>
-                  !p.ownerWallet ||
-                  p.ownerWallet.toLowerCase() === wallet.address!.toLowerCase(),
-              )
-            : properties;
+      case "properties":
         return (
-          <PropertiesPage properties={ownedProperties} navigate={navigate} />
+          <PropertiesPage properties={myProperties} navigate={navigate} />
         );
-      }
       case "property-new":
         return (
           <PropertyNewPage navigate={navigate} actions={appActions} />
@@ -503,7 +540,7 @@ export function UEstateApp() {
       case "property":
         return (
           <PropertyDetailPage
-            property={findProp()}
+            property={findOwnedProp()}
             navigate={navigate}
             listings={listings}
             actions={appActions}
@@ -514,7 +551,7 @@ export function UEstateApp() {
       case "property-publish":
         return (
           <PropertyPublishPage
-            property={findProp()}
+            property={findOwnedProp()}
             navigate={navigate}
             actions={appActions}
           />
@@ -544,16 +581,20 @@ export function UEstateApp() {
       case "portfolio":
         return (
           <PortfolioPage
-            properties={properties}
-            listings={listings}
-            transactions={transactions}
+            properties={role === "buyer" ? properties : myProperties}
+            listings={role === "buyer" ? listings : myListings}
+            transactions={role === "buyer" ? transactions : myTransactions}
             user={user}
             navigate={navigate}
             role={role}
           />
         );
       case "transactions":
-        return <TransactionsPage transactions={transactions} />;
+        return (
+          <TransactionsPage
+            transactions={role === "buyer" ? transactions : myTransactions}
+          />
+        );
       case "learn":
         return <LearnPage role={role} navigate={navigate} />;
       case "settings":
@@ -568,7 +609,7 @@ export function UEstateApp() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={"app-shell" + (sidebarOpen ? "" : " sidebar-hidden")}>
       <Sidebar route={route} navigate={navigate} role={role} />
       <div className="main">
         <Topbar
@@ -578,6 +619,7 @@ export function UEstateApp() {
           navigate={navigate}
           route={route}
           wallet={wallet}
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
         />
         {renderPage()}
       </div>

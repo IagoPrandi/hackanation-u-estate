@@ -314,7 +314,9 @@ export type SavedPropertyRecord = PropertyDraftPreview & {
       | "MockVerified"
       | "Tokenized"
       | "ActiveSale"
-      | "SoldOut";
+      | "SoldOut"
+      | "Rejected";
+    rejection?: { reason: string; rejectedAt: string };
     registeredAt: string;
     verificationTxHash?: string;
     verifiedAt?: string;

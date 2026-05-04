@@ -4,7 +4,8 @@ export type PropertyStatus =
   | "MockVerified"
   | "Tokenized"
   | "ActiveSale"
-  | "SoldOut";
+  | "SoldOut"
+  | "Rejected";
 
 export type DocumentType = "mock_deed" | "mock_owner_id" | "mock_tax_record";
 
@@ -43,6 +44,7 @@ export type Property = {
   usufructTokenId?: string;
   ownerWallet?: string;
   createdAt: string;
+  rejection?: { reason: string; rejectedAt: string };
 };
 
 export type Listing = {
