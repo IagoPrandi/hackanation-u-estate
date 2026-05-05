@@ -24,6 +24,7 @@ import {
   TxModal,
   ValueSplit,
 } from "./ui";
+import { listingIdentity } from "./listing-identity";
 import type {
   Listing,
   Navigate,
@@ -296,10 +297,10 @@ export function MarketplacePage({
         <div className="grid-3">
           {enriched.map((l) => (
             <OfferCard
-              key={l.listingId}
+              key={listingIdentity(l)}
               listing={l}
               property={l.property}
-              onClick={() => navigate("listing", { id: l.listingId })}
+              onClick={() => navigate("listing", { id: listingIdentity(l) })}
             />
           ))}
         </div>

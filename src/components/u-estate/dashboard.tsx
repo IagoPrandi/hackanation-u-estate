@@ -2,6 +2,7 @@
 
 import { formatUnits, formatUsd } from "./data";
 import { getWalletHoldings } from "./holdings";
+import { listingIdentity } from "./listing-identity";
 import {
   IconArrowRight,
   IconCheck,
@@ -510,10 +511,10 @@ function BuyerDashboard({
       <div className="grid-3 mb-32">
         {featured.map((l) => (
           <OfferCard
-            key={l.listingId}
+            key={listingIdentity(l)}
             listing={l}
             property={l.property}
-            onClick={() => navigate("listing", { id: l.listingId })}
+            onClick={() => navigate("listing", { id: listingIdentity(l) })}
           />
         ))}
       </div>

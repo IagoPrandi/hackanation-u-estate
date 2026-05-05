@@ -17,6 +17,7 @@ import {
 import { LandingPage } from "./landing";
 import { getWalletHoldingForProperty } from "./holdings";
 import { InvestmentDetailPage } from "./investment-detail";
+import { matchesListingIdentity } from "./listing-identity";
 import { ListingDetailPage, MarketplacePage } from "./marketplace";
 import {
   fetchProperties,
@@ -581,7 +582,7 @@ export function UEstateApp() {
   const findInvestmentProp = () =>
     properties.find((p) => p.id === route.params.id);
   const findListing = () =>
-    listings.find((l) => l.listingId === route.params.id);
+    listings.find((l) => matchesListingIdentity(l, route.params.id));
 
   if (route.name === "landing") {
     return <LandingPage navigate={navigate} setRole={setRole} />;

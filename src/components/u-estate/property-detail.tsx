@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { AppActions } from "./app";
 import { formatBrl, formatEth, formatUnits, formatUsd } from "./data";
+import { listingIdentity } from "./listing-identity";
 import {
   IconArrowRight,
   IconCheck,
@@ -410,7 +411,7 @@ export function PropertyDetailPage({
                   const lpct = (l.amount / p.totalValueUnits) * 100;
                   return (
                     <div
-                      key={l.listingId}
+                      key={listingIdentity(l)}
                       className="row row-gap"
                       style={{
                         padding: 16,
