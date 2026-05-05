@@ -49,6 +49,7 @@ export type Property = {
 
 export type Listing = {
   listingId: string;
+  localPropertyId?: string;
   propertyId: string;
   amount: number;
   priceWei: string;

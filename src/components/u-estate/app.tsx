@@ -243,7 +243,7 @@ export function UEstateApp() {
       ]);
       return property;
     },
-    [actions, applyRecord, refreshFromApi],
+    [actions, applyRecord, refreshFromApi, wallet.address],
   );
 
   const verifyProperty = useCallback<AppActions["verifyProperty"]>(
@@ -339,6 +339,7 @@ export function UEstateApp() {
         Number(target.marketValueEth) * (units / target.totalValueUnits);
       const listing: Listing = {
         listingId: String(Math.floor(Math.random() * 9999)),
+        localPropertyId: target.id,
         propertyId: target.propertyId,
         amount: units,
         priceWei: priceEth.toFixed(6),
@@ -382,7 +383,12 @@ export function UEstateApp() {
       const listing = listings.find((l) => l.listingId === listingId);
       if (!listing) throw new Error("Oferta não encontrada.");
 
-      if (actions.ready && localId !== listing.propertyId) {
+      if (actions.ready) {
+        if (!listing.localPropertyId || listing.localPropertyId !== localId) {
+          throw new Error(
+            "Esta oferta nao esta vinculada ao registro on-chain local atual. Atualize os dados antes de comprar.",
+          );
+        }
         const record = await actions.buyListing(
           localId,
           listingId,
@@ -508,7 +514,6 @@ export function UEstateApp() {
     return transactions.filter((t) => titles.has(t.propertyTitle));
   }, [transactions, myProperties, walletAddr]);
 
-  const findProp = () => properties.find((p) => p.id === route.params.id);
   const findOwnedProp = () =>
     myProperties.find((p) => p.id === route.params.id);
   const findListing = () =>
@@ -576,6 +581,7 @@ export function UEstateApp() {
             property={p}
             navigate={navigate}
             actions={appActions}
+            walletAddress={wallet.address}
           />
         );
       }

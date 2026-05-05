@@ -7,7 +7,7 @@ import {
   type Hex,
 } from "viem";
 import { useConfig, useReadContract, useWriteContract } from "wagmi";
-import { waitForTransactionReceipt } from "wagmi/actions";
+import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { sepolia } from "wagmi/chains";
 import { primaryValueSaleAbi } from "@/lib/contracts/primary-value-sale";
 import {
@@ -21,6 +21,8 @@ import type { PropertyDocument, TxStep } from "./types";
 import type { WalletState } from "./wallet";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const TOTAL_VALUE_UNITS = 1_000_000n;
+const SALE_STATUS_ACTIVE = 1;
 
 export type NewPropertyForm = {
   marketValueEth: string;
@@ -179,7 +181,6 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
         draft.documentsHash as Hex,
         draft.locationHash as Hex,
       ],
-      gas: BigInt(500_000),
       chainId: sepolia.id,
     });
 
@@ -225,7 +226,6 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
       abi: propertyRegistryAbi,
       functionName: "mockVerifyProperty",
       args: [BigInt(onchainPropertyId)],
-      gas: BigInt(200_000),
       chainId: sepolia.id,
     });
     onStep("sent");
@@ -274,7 +274,6 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
         abi: propertyRegistryAbi,
         functionName: "mockVerifyProperty",
         args: [BigInt(onchainPropertyId)],
-        gas: BigInt(200_000),
         chainId: sepolia.id,
       });
       const verifyReceipt = await waitForTransactionReceipt(config, {
@@ -311,7 +310,6 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
       abi: propertyRegistryAbi,
       functionName: "tokenizeProperty",
       args: [BigInt(onchainPropertyId)],
-      gas: BigInt(2_500_000),
       chainId: sepolia.id,
     });
     onStep("sent");
@@ -365,7 +363,6 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
       abi: primaryValueSaleAbi,
       functionName: "createPrimarySaleListing",
       args: [BigInt(onchainPropertyId), BigInt(units)],
-      gas: BigInt(400_000),
       chainId: sepolia.id,
     });
     onStep("sent");
@@ -407,14 +404,66 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
   ) => {
     requireReady();
     requirePrimarySale();
+    const buyerAddress = wallet.address as Address;
+    const requestedListingId = BigInt(listingId);
+    const requestedAmount = BigInt(amount);
+    const [exists, onchainListing] = await Promise.all([
+      readContract(config, {
+        address: primaryValueSaleAddress as Address,
+        abi: primaryValueSaleAbi,
+        functionName: "listingExists",
+        args: [requestedListingId],
+        chainId: sepolia.id,
+      }),
+      readContract(config, {
+        address: primaryValueSaleAddress as Address,
+        abi: primaryValueSaleAbi,
+        functionName: "listings",
+        args: [requestedListingId],
+        chainId: sepolia.id,
+      }),
+    ]);
+    if (!exists) {
+      throw new Error("Oferta nao existe no contrato de venda configurado.");
+    }
+    const [, onchainPropertyId, seller, onchainAmount, , status] =
+      onchainListing;
+    if (status !== SALE_STATUS_ACTIVE) {
+      throw new Error("Oferta nao esta ativa no contrato.");
+    }
+    if (buyerAddress.toLowerCase() === seller.toLowerCase()) {
+      throw new Error(
+        "A carteira vendedora nao pode comprar a propria oferta. Conecte uma carteira compradora diferente.",
+      );
+    }
+    if (requestedAmount === 0n || requestedAmount > onchainAmount) {
+      throw new Error("Quantidade solicitada excede a oferta on-chain.");
+    }
+    const property = await readContract(config, {
+      address: propertyRegistryAddress as Address,
+      abi: propertyRegistryAbi,
+      functionName: "properties",
+      args: [onchainPropertyId],
+      chainId: sepolia.id,
+    });
+    const marketValueWei = property[2];
+    const expectedPriceWei =
+      (marketValueWei * requestedAmount) / TOTAL_VALUE_UNITS;
+    if (expectedPriceWei === 0n) {
+      throw new Error("Preco on-chain calculado e zero.");
+    }
+    if (priceWei !== expectedPriceWei) {
+      throw new Error(
+        "Preco local desatualizado em relacao ao contrato. Atualize a pagina antes de comprar.",
+      );
+    }
     onStep("sign");
     const txHash = await writeContractAsync({
       address: primaryValueSaleAddress as Address,
       abi: primaryValueSaleAbi,
       functionName: "buyPrimarySaleListing",
-      args: [BigInt(listingId), BigInt(amount)],
+      args: [requestedListingId, requestedAmount],
       value: priceWei,
-      gas: BigInt(300_000),
       chainId: sepolia.id,
     });
     onStep("sent");
@@ -461,7 +510,6 @@ export function useUEstateActions(wallet: WalletState): UEstateActions {
       abi: primaryValueSaleAbi,
       functionName: "cancelPrimarySaleListing",
       args: [BigInt(listingId)],
-      gas: BigInt(200_000),
       chainId: sepolia.id,
     });
     onStep("sent");

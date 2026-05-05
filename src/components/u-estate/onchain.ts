@@ -99,6 +99,7 @@ export function recordsToListings(records: SavedPropertyRecord[]): Listing[] {
     for (const l of onchain.primarySaleListings) {
       listings.push({
         listingId: l.listingId,
+        localPropertyId: record.localPropertyId,
         propertyId: onchain.propertyId,
         amount: Number(l.amount),
         priceWei: weiToEthDecimalString(l.priceWei, 18),

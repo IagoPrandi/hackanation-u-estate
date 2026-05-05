@@ -313,11 +313,13 @@ export function ListingDetailPage({
   property,
   navigate,
   actions,
+  walletAddress,
 }: {
   listing: Listing | undefined;
   property: Property | undefined;
   navigate: Navigate;
   actions: AppActions;
+  walletAddress?: string;
 }) {
   const minUnits = 1000;
   const initialUnits = listing
@@ -347,9 +349,23 @@ export function ListingDetailPage({
       : 0;
   const pctOfProp = (units / property.totalValueUnits) * 100;
   const offerPctOfProp = (listing.amount / property.totalValueUnits) * 100;
+  const isSellerWallet =
+    Boolean(walletAddress) &&
+    walletAddress?.toLowerCase() === listing.seller.toLowerCase();
+  const isOnchainLinked = Boolean(listing.localPropertyId);
+  const buyDisabled = isSellerWallet || (actions.ready && !isOnchainLinked);
+  const buyDisabledMessage = isSellerWallet
+    ? "Conecte uma carteira compradora diferente da carteira vendedora desta oferta."
+    : actions.ready && !isOnchainLinked
+      ? "Esta oferta e apenas demonstrativa ou esta fora do deploy atual. Atualize os dados antes de comprar on-chain."
+      : null;
 
   const start = async () => {
     setErrorMessage(null);
+    if (buyDisabledMessage) {
+      setErrorMessage(buyDisabledMessage);
+      return;
+    }
     setTx({ open: true, step: "sign" });
     try {
       await actions.buyListing(
@@ -719,12 +735,26 @@ export function ListingDetailPage({
 
             <button
               className="btn btn-primary btn-lg w-100 mt-24"
+              disabled={buyDisabled}
               onClick={() => {
                 void start();
               }}
             >
               <IconCoins size={16} /> Investir agora
             </button>
+            {buyDisabledMessage && (
+              <div
+                className="card-pad mt-16"
+                style={{
+                  background: "var(--color-warning-soft)",
+                  borderRadius: "var(--radius-md)",
+                  color: "var(--color-warning)",
+                }}
+              >
+                <div className="text-sm fw-700">Compra indisponivel</div>
+                <div className="text-sm mt-12">{buyDisabledMessage}</div>
+              </div>
+            )}
             <div
               className="text-xs muted mt-12"
               style={{ textAlign: "center" }}

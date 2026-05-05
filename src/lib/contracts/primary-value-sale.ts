@@ -23,6 +23,27 @@ export const primaryValueSaleAbi = [
   },
   {
     type: "function",
+    stateMutability: "view",
+    name: "listingExists",
+    inputs: [{ name: "listingId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    stateMutability: "view",
+    name: "listings",
+    inputs: [{ name: "listingId", type: "uint256" }],
+    outputs: [
+      { name: "listingId", type: "uint256" },
+      { name: "propertyId", type: "uint256" },
+      { name: "seller", type: "address" },
+      { name: "amount", type: "uint256" },
+      { name: "priceWei", type: "uint256" },
+      { name: "status", type: "uint8" },
+    ],
+  },
+  {
+    type: "function",
     stateMutability: "nonpayable",
     name: "cancelPrimarySaleListing",
     inputs: [{ name: "listingId", type: "uint256" }],
