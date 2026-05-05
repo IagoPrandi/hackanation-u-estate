@@ -105,6 +105,7 @@ export function PropertyDetailPage({
     title: string;
   }>({ open: false, step: "sign", title: "" });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  void chainMode;
 
   const runChainAction = async (
     title: string,
@@ -140,7 +141,6 @@ export function PropertyDetailPage({
   const availUnits = p.freeValueUnits - p.soldFreeValueUnits;
   const capturedEth =
     Number(p.marketValueEth) * (p.soldFreeValueUnits / p.totalValueUnits);
-
   const primary = (() => {
     if (p.status === "PendingMockVerification")
       return null;

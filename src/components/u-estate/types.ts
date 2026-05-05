@@ -42,9 +42,18 @@ export type Property = {
   locationHash: string;
   valueTokenAddress?: string;
   usufructTokenId?: string;
+  buyerBalances?: BuyerBalance[];
   ownerWallet?: string;
   createdAt: string;
   rejection?: { reason: string; rejectedAt: string };
+};
+
+export type BuyerBalance = {
+  buyerWallet: string;
+  freeValueUnits: string;
+  totalPaidWei: string;
+  lastPurchaseTxHash: string;
+  acquiredAt: string;
 };
 
 export type Listing = {
@@ -62,6 +71,11 @@ export type Listing = {
 export type Transaction = {
   id: string;
   type: string;
+  localPropertyId?: string;
+  propertyId?: string;
+  ownerWallet?: string;
+  sellerWallet?: string;
+  buyerWallet?: string;
   propertyTitle: string;
   valueEth: string | null;
   status: "Confirmado" | "Pendente" | "Falhou";
@@ -87,6 +101,7 @@ export type RouteName =
   | "property-new"
   | "property"
   | "property-publish"
+  | "investment"
   | "marketplace"
   | "listing"
   | "portfolio"

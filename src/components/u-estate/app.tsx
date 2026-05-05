@@ -15,6 +15,8 @@ import {
   shortHash,
 } from "./data";
 import { LandingPage } from "./landing";
+import { getWalletHoldingForProperty } from "./holdings";
+import { InvestmentDetailPage } from "./investment-detail";
 import { ListingDetailPage, MarketplacePage } from "./marketplace";
 import {
   fetchProperties,
@@ -99,6 +101,39 @@ async function mockTxFlow(onStep: StepCb) {
   onStep("done");
 }
 
+function upsertBuyerBalance(
+  balances: Property["buyerBalances"] | undefined,
+  buyerWallet: string,
+  units: number,
+  priceWei: bigint,
+  txHash: string,
+) {
+  const now = new Date().toISOString();
+  const existing = balances ?? [];
+  const index = existing.findIndex(
+    (balance) => balance.buyerWallet.toLowerCase() === buyerWallet.toLowerCase(),
+  );
+  const next = {
+    buyerWallet,
+    freeValueUnits: String(units),
+    totalPaidWei: priceWei.toString(),
+    lastPurchaseTxHash: txHash,
+    acquiredAt: now,
+  };
+  if (index === -1) return [next, ...existing];
+  return existing.map((balance, i) =>
+    i === index
+      ? {
+          ...balance,
+          freeValueUnits: String(Number(balance.freeValueUnits) + units),
+          totalPaidWei: (BigInt(balance.totalPaidWei) + priceWei).toString(),
+          lastPurchaseTxHash: txHash,
+          acquiredAt: now,
+        }
+      : balance,
+  );
+}
+
 export function UEstateApp() {
   const wallet = useWallet();
   const actions = useUEstateActions(wallet);
@@ -161,7 +196,9 @@ export function UEstateApp() {
     // Whenever the wallet identity changes, drop any in-progress per-property
     // route so the user does not stay on a foreign wallet's detail/publish page.
     setRoute((prev) =>
-      prev.name === "property" || prev.name === "property-publish"
+      prev.name === "property" ||
+      prev.name === "property-publish" ||
+      prev.name === "investment"
         ? { name: "dashboard", params: {} }
         : prev,
     );
@@ -403,6 +440,7 @@ export function UEstateApp() {
 
       await mockTxFlow(onStep);
       const newAmount = listing.amount - units;
+      const txHash = shortHash();
       setListings((prev) =>
         prev.map((l) =>
           l.listingId === listingId
@@ -424,6 +462,13 @@ export function UEstateApp() {
               ? {
                   ...p,
                   soldFreeValueUnits: p.soldFreeValueUnits + units,
+                  buyerBalances: upsertBuyerBalance(
+                    p.buyerBalances,
+                    user.wallet,
+                    units,
+                    priceWei,
+                    txHash,
+                  ),
                 }
               : p,
           ),
@@ -433,16 +478,21 @@ export function UEstateApp() {
         {
           id: "tx-" + Date.now(),
           type: "Investimento",
+          localPropertyId: prop?.id,
+          propertyId: prop?.propertyId,
+          ownerWallet: prop?.ownerWallet,
+          sellerWallet: listing.seller,
+          buyerWallet: user.wallet,
           propertyTitle: prop?.title ?? "—",
           valueEth: weiToEthDecimalString(priceWei, 8),
           status: "Confirmado",
           date: new Date().toISOString(),
-          txHash: shortHash(),
+          txHash,
         },
         ...prev,
       ]);
     },
-    [actions, applyRecord, listings, properties, refreshFromApi],
+    [actions, applyRecord, listings, properties, refreshFromApi, user.wallet],
   );
 
   const cancelListing = useCallback<AppActions["cancelListing"]>(
@@ -510,12 +560,26 @@ export function UEstateApp() {
 
   const myTransactions = useMemo(() => {
     if (!walletAddr) return transactions;
-    const titles = new Set(myProperties.map((p) => p.title));
-    return transactions.filter((t) => titles.has(t.propertyTitle));
+    const ownedIds = new Set(myProperties.map((p) => p.id));
+    return transactions.filter(
+      (t) =>
+        t.ownerWallet?.toLowerCase() === walletAddr ||
+        t.sellerWallet?.toLowerCase() === walletAddr ||
+        (t.localPropertyId ? ownedIds.has(t.localPropertyId) : false),
+    );
   }, [transactions, myProperties, walletAddr]);
+
+  const myBuyerTransactions = useMemo(() => {
+    if (!walletAddr) return transactions;
+    return transactions.filter(
+      (t) => t.buyerWallet?.toLowerCase() === walletAddr,
+    );
+  }, [transactions, walletAddr]);
 
   const findOwnedProp = () =>
     myProperties.find((p) => p.id === route.params.id);
+  const findInvestmentProp = () =>
+    properties.find((p) => p.id === route.params.id);
   const findListing = () =>
     listings.find((l) => l.listingId === route.params.id);
 
@@ -530,9 +594,12 @@ export function UEstateApp() {
           <DashboardPage
             properties={role === "buyer" ? properties : myProperties}
             listings={role === "buyer" ? listings : myListings}
-            transactions={role === "buyer" ? transactions : myTransactions}
+            transactions={
+              role === "buyer" ? myBuyerTransactions : myTransactions
+            }
             navigate={navigate}
             role={role}
+            user={user}
           />
         );
       case "properties":
@@ -562,6 +629,17 @@ export function UEstateApp() {
             actions={appActions}
           />
         );
+      case "investment": {
+        const p = findInvestmentProp();
+        return (
+          <InvestmentDetailPage
+            property={p}
+            holding={getWalletHoldingForProperty(p, wallet.address)}
+            listings={listings}
+            navigate={navigate}
+          />
+        );
+      }
       case "marketplace":
         return (
           <MarketplacePage
@@ -590,7 +668,9 @@ export function UEstateApp() {
           <PortfolioPage
             properties={role === "buyer" ? properties : myProperties}
             listings={role === "buyer" ? listings : myListings}
-            transactions={role === "buyer" ? transactions : myTransactions}
+            transactions={
+              role === "buyer" ? myBuyerTransactions : myTransactions
+            }
             user={user}
             navigate={navigate}
             role={role}
@@ -599,7 +679,9 @@ export function UEstateApp() {
       case "transactions":
         return (
           <TransactionsPage
-            transactions={role === "buyer" ? transactions : myTransactions}
+            transactions={
+              role === "buyer" ? myBuyerTransactions : myTransactions
+            }
           />
         );
       case "learn":

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatUsd, truncate } from "./data";
+import { getWalletHoldings } from "./holdings";
 import {
   IconBell,
   IconCheck,
@@ -32,6 +33,7 @@ import type {
 export function PortfolioPage({
   properties,
   transactions,
+  user,
   navigate,
   role,
 }: {
@@ -47,24 +49,7 @@ export function PortfolioPage({
     isBuyer ? "holdings" : "owned",
   );
   const owned = properties;
-  const holdings = [
-    { propertyId: "1", units: 80000, costEth: 0.068 },
-    { propertyId: "4", units: 50000, costEth: 0.014 },
-  ]
-    .map((h) => ({
-      ...h,
-      property: properties.find((p) => p.propertyId === h.propertyId),
-    }))
-    .filter(
-      (
-        h,
-      ): h is {
-        propertyId: string;
-        units: number;
-        costEth: number;
-        property: Property;
-      } => Boolean(h.property),
-    );
+  const holdings = getWalletHoldings(properties, user.wallet);
 
   const totalOwnedValueEth = owned.reduce(
     (s, p) =>
@@ -327,14 +312,14 @@ export function PortfolioPage({
                 (Number(h.property.marketValueEth) * h.units) /
                 h.property.totalValueUnits;
               const hpnl = valueEth - h.costEth;
-              const hpnlPct = (hpnl / h.costEth) * 100;
+              const hpnlPct = h.costEth > 0 ? (hpnl / h.costEth) * 100 : 0;
               return (
                 <div
-                  key={i}
+                  key={`${h.property.id}-${h.buyerWallet}-${i}`}
                   className="card card-pad row row-gap"
                   style={{ cursor: "pointer" }}
                   onClick={() =>
-                    navigate("property", { id: h.property.id })
+                    navigate("investment", { id: h.property.id })
                   }
                 >
                   <div
@@ -890,4 +875,3 @@ export function SettingsPage({
     </div>
   );
 }
-

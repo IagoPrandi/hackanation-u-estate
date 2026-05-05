@@ -1,6 +1,7 @@
 "use client";
 
 import { formatUnits, formatUsd } from "./data";
+import { getWalletHoldings } from "./holdings";
 import {
   IconArrowRight,
   IconCheck,
@@ -23,6 +24,7 @@ import type {
   Property,
   Role,
   Transaction,
+  User,
 } from "./types";
 
 function OwnerDashboard({
@@ -350,13 +352,17 @@ function OwnerDashboard({
 function BuyerDashboard({
   properties,
   listings,
+  transactions,
   navigate,
+  user,
 }: {
   properties: Property[];
   listings: Listing[];
   transactions: Transaction[];
   navigate: Navigate;
+  user: User;
 }) {
+  void transactions;
   const activeListings = listings.filter((l) => l.status === "Active");
   const enriched = activeListings
     .map((l) => ({
@@ -368,20 +374,7 @@ function BuyerDashboard({
     );
   const featured = enriched.slice(0, 3);
 
-  const holdings = [
-    { propertyId: "1", units: 80000, costEth: 0.068 },
-    { propertyId: "4", units: 50000, costEth: 0.014 },
-  ]
-    .map((h) => ({
-      ...h,
-      property: properties.find((p) => p.propertyId === h.propertyId),
-    }))
-    .filter(
-      (
-        h,
-      ): h is { propertyId: string; units: number; costEth: number; property: Property } =>
-        Boolean(h.property),
-    );
+  const holdings = getWalletHoldings(properties, user.wallet);
   const totalInvested = holdings.reduce((s, h) => s + h.costEth, 0);
   const totalValue = holdings.reduce(
     (s, h) =>
@@ -542,7 +535,7 @@ function BuyerDashboard({
                 (Number(h.property.marketValueEth) * h.units) /
                 h.property.totalValueUnits;
               const hpnl = valueEth - h.costEth;
-              const hpnlPct = (hpnl / h.costEth) * 100;
+              const hpnlPct = h.costEth > 0 ? (hpnl / h.costEth) * 100 : 0;
               return (
                 <div
                   key={i}
@@ -553,7 +546,7 @@ function BuyerDashboard({
                     cursor: "pointer",
                   }}
                   onClick={() =>
-                    navigate("property", { id: h.property.id })
+                    navigate("investment", { id: h.property.id })
                   }
                 >
                   <div
@@ -652,12 +645,14 @@ export function DashboardPage({
   transactions,
   navigate,
   role,
+  user,
 }: {
   properties: Property[];
   listings: Listing[];
   transactions: Transaction[];
   navigate: Navigate;
   role: Role;
+  user: User;
 }) {
   if (role === "buyer")
     return (
@@ -666,6 +661,7 @@ export function DashboardPage({
         listings={listings}
         transactions={transactions}
         navigate={navigate}
+        user={user}
       />
     );
   return (
