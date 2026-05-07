@@ -34,6 +34,7 @@ import type {
   TxStep,
   User,
 } from "./types";
+import { LanguageToggle } from "./i18n";
 import { WalletChip, type WalletState } from "./wallet";
 
 const STATUS_MAP: Record<
@@ -214,6 +215,7 @@ export function Topbar({
         </div>
       </div>
       <div className="topbar-right">
+        <LanguageToggle compact />
         <div
           className="role-switch"
           title="Alterne entre as duas experiências"

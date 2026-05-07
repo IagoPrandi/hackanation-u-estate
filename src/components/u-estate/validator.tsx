@@ -9,18 +9,16 @@ import {
   IconCheck,
   IconClock,
   IconFile,
-  IconLock,
   IconShield,
   IconUser,
   IconX,
 } from "./icons";
+import { LanguageToggle } from "./i18n";
 
 const ACCESS_CODE = "u-estate-ops";
 const STORAGE_KEY = "validator_session";
 
 type Session = { email: string; name: string; loggedInAt: string };
-
-type PendingProperty = SavedPropertyRecord & { _pending: boolean };
 
 function titleFromRecord(r: SavedPropertyRecord) {
   const s = r.address.street.trim();
@@ -95,6 +93,9 @@ function LoginForm({
         padding: 24,
       }}
     >
+      <div style={{ position: "fixed", right: 24, top: 24, zIndex: 2 }}>
+        <LanguageToggle />
+      </div>
       <div
         style={{
           background: "var(--color-surface)",
@@ -605,7 +606,10 @@ function ValidatorDashboard({
   };
 
   useEffect(() => {
-    void load();
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const handleApprove = async (localPropertyId: string) => {
@@ -679,6 +683,7 @@ function ValidatorDashboard({
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <LanguageToggle compact />
           <div
             style={{
               display: "flex",
@@ -939,27 +944,23 @@ function PropertyRow({
 // ===== APP ENTRY =====
 
 export function ValidatorApp() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+  const [session, setSession] = useState<Session | null>(() => {
+    if (typeof window === "undefined") return null;
+    const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        setSession(JSON.parse(stored) as Session);
+        return JSON.parse(stored) as Session;
       } catch {
-        localStorage.removeItem(STORAGE_KEY);
+        window.localStorage.removeItem(STORAGE_KEY);
       }
     }
-    setReady(true);
-  }, []);
+    return null;
+  });
 
   const handleLogout = () => {
     localStorage.removeItem(STORAGE_KEY);
     setSession(null);
   };
-
-  if (!ready) return null;
 
   if (!session) {
     return <LoginForm onLogin={setSession} />;

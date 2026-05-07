@@ -17,9 +17,9 @@ const jetMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "u-estate · Tokenização imobiliária",
+  title: "u-estate · Real estate tokenization",
   description:
-    "u-estate separa o direito de usufruir do imóvel do direito sobre o seu valor — duas posições independentes que abrem uma forma totalmente nova de participação econômica em imóveis.",
+    "u-estate separates the right to use a property from the right to its value, creating independent economic positions for real estate participation.",
   icons: {
     icon: "/u-estate-logo.png",
   },
@@ -31,7 +31,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${jakarta.variable} ${jetMono.variable}`}>
+    <html lang="en" className={`${jakarta.variable} ${jetMono.variable}`}>
       <body>
         <AppProviders>{children}</AppProviders>
       </body>

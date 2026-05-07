@@ -12,7 +12,35 @@ import {
   IconUsers,
   IconZap,
 } from "./icons";
+import { LanguageToggle, useLanguage } from "./i18n";
 import type { Navigate, Role } from "./types";
+
+const heroCopy = {
+  en: {
+    tag: "Proptech · Real estate tokenization",
+    titleLead: "Invest in",
+    titleAccent: "real estate value",
+    titleTail: "without buying the whole property.",
+    subtitleLead: "u-estate separates",
+    subtitleUseRight: "the right to use the property",
+    subtitleAnd: "and",
+    subtitleValueRight: "the right to the property's value",
+    subtitleTail:
+      "two independent positions that open a new way to participate economically in real estate.",
+  },
+  pt: {
+    tag: "Proptech · Tokenização imobiliária",
+    titleLead: "Invista em",
+    titleAccent: "valor imobiliário",
+    titleTail: "sem comprar o imóvel inteiro.",
+    subtitleLead: "A u-estate separa",
+    subtitleUseRight: "o direito de usufruir do imóvel",
+    subtitleAnd: "e",
+    subtitleValueRight: "o direito sobre o valor do imóvel",
+    subtitleTail:
+      "duas posições independentes que abrem uma forma totalmente nova de participação econômica em imóveis.",
+  },
+} as const;
 
 export function LandingPage({
   navigate,
@@ -21,6 +49,8 @@ export function LandingPage({
   navigate: Navigate;
   setRole: (r: Role) => void;
 }) {
+  const { locale } = useLanguage();
+  const copy = heroCopy[locale];
   const enterAsOwner = () => {
     setRole("owner");
     navigate("dashboard");
@@ -64,6 +94,7 @@ export function LandingPage({
           <a onClick={(e) => { e.preventDefault(); document.getElementById("beneficios")?.scrollIntoView({ behavior: "smooth" }); }}>Benefícios</a>
         </div>
         <div className="row row-gap">
+          <LanguageToggle compact />
           <a
             href="/validator"
             target="_blank"
@@ -87,7 +118,7 @@ export function LandingPage({
 
       <section className="hero">
         <div>
-          <span className="hero-tag">
+          <span className="hero-tag" data-i18n-skip="true">
             <span
               style={{
                 width: 6,
@@ -96,17 +127,16 @@ export function LandingPage({
                 background: "var(--color-orange)",
               }}
             />{" "}
-            Proptech · Tokenização imobiliária
+            {copy.tag}
           </span>
-          <h1>
-            Invista em <span className="accent">valor imobiliário</span> sem
-            comprar o imóvel inteiro.
+          <h1 data-i18n-skip="true">
+            {copy.titleLead} <span className="accent">{copy.titleAccent}</span>{" "}
+            {copy.titleTail}
           </h1>
-          <p>
-            A u-estate separa <strong>o direito de usufruir do imóvel</strong>{" "}
-            e <strong>o direito sobre o valor do imóvel</strong> — duas
-            posições independentes que abrem uma forma totalmente nova de
-            participação econômica em imóveis.
+          <p data-i18n-skip="true">
+            {copy.subtitleLead} <strong>{copy.subtitleUseRight}</strong>{" "}
+            {copy.subtitleAnd} <strong>{copy.subtitleValueRight}</strong> —{" "}
+            {copy.subtitleTail}
           </p>
           <div className="hero-cta">
             <button className="btn btn-primary btn-lg" onClick={enterAsBuyer}>

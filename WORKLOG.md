@@ -2,6 +2,16 @@
 
 ## Document Check
 
+- [x] Re-opened `PRD.md` before fixing the remaining landing hero translation on 2026-05-07.
+- [x] Attempted to open required `./skill` folder before the remaining landing hero translation fix on 2026-05-07; the folder is not present in this checkout.
+- [x] Reviewed the invoked `caveman:caveman` skill instructions before continuing the translation fix on 2026-05-07.
+- [x] Re-opened `PRD.md` before fixing mixed-language landing sections and locale decimal separators on 2026-05-07.
+- [x] Attempted to open required `./skill` folder before mixed-language/decimal fix on 2026-05-07; the folder is not present in this checkout.
+- [x] Re-opened `PRD.md` before fixing the remaining marketplace hero translation on 2026-05-07.
+- [x] Attempted to open required `./skill` folder before marketplace hero translation fix on 2026-05-07; the folder is not present in this checkout.
+- [x] Re-opened `PRD.md` before implementing full bilingual UI with default English on 2026-05-07.
+- [x] Attempted to open required `./skill` folder before bilingual UI work on 2026-05-07; the folder is not present in this checkout.
+- [x] Reviewed `skills/develop-frontend/SKILL.md` before bilingual UI work on 2026-05-07.
 - [x] Re-opened `PRD.md` before merging `origin/codex/create-english-ui-branch-with-language-toggle` into `main` on 2026-05-06.
 - [x] Attempted to open required `./skill` folder before merge on 2026-05-06; the folder is not present in this checkout.
 - [x] Opened `PRD.md` before starting implementation on 2026-04-29.
@@ -168,6 +178,15 @@
 ## 2026-05-06
 
 - Merged `origin/codex/create-english-ui-branch-with-language-toggle` into `main` with a fast-forward merge. No conflicts were produced. Did not mark any milestone complete because milestone ticking requires explicit user confirmation.
+
+## 2026-05-07
+
+- Fixed the remaining landing hero translation shown in the screenshot by rendering the hero badge, title, and subtitle from locale-aware copy instead of relying on DOM phrase matching across split JSX nodes. Marked those dynamic hero nodes as i18n-managed so the global DOM translator does not restore stale original text after language changes. Re-verified `npm run typecheck`, `npm run lint -- --ignore-pattern "Teste pag-handoff/**"`, `npm run build`, and HTTP 200 for `/` and `/validator` on `http://localhost:3001`.
+- Removed generic word-level translation replacements that caused mixed PT/EN sentences such as `Right de uso` and `A owner...`. Added exact full-sentence translations for the landing rights and benefits sections. Added locale-aware decimal separator normalization so English UI uses dots for decimal values and Portuguese UI uses commas for currency/percent values.
+- Fixed the marketplace hero heading translation where `Imóveis verificados, a partir de` and `0,001 ETH` were split across separate JSX text nodes, preventing the full-sentence translation rule from matching. Added exact translations for those fragments and rebuilt the app.
+- Implemented a global bilingual UI layer for the main app and validator route with English as the strict default and a PT/EN toggle in the landing nav, app topbar, and validator UI. Updated the root metadata and `html` language default to English. The translation layer covers rendered UI text plus common placeholders, titles, aria labels, and alt text while preserving user-entered/property data.
+- Verified `npm run typecheck`, `npm test`, `npm run build`, and `npm run lint -- --ignore-pattern "Teste pag-handoff/**"`. The plain `npm run lint` still includes the experimental `Teste pag-handoff/**` directory, which has unrelated pre-existing lint failures outside the production app.
+- Started the production server on `http://localhost:3001` after build and confirmed `/` and `/validator` return HTTP 200. Attempted the required browser verification path, but the `agent-browser` CLI is not installed in this environment.
 ## Progress Tracker
 
 | Milestone | Status | Notes | Updated At |
