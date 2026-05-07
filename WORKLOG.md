@@ -2,6 +2,8 @@
 
 ## Document Check
 
+- [x] Re-opened `PRD.md` before merging `origin/codex/create-english-ui-branch-with-language-toggle` into `main` on 2026-05-06.
+- [x] Attempted to open required `./skill` folder before merge on 2026-05-06; the folder is not present in this checkout.
 - [x] Opened `PRD.md` before starting implementation on 2026-04-29.
 - [x] Opened `AGENTS.md` before starting implementation on 2026-04-29.
 - [x] Opened the local skills folder and reviewed `skills/best-practices/SKILL.md`.
@@ -162,6 +164,10 @@
 - Added a dedicated investor `investment` route and `InvestmentDetailPage`. Buyer-mode holdings now open a financial asset view instead of the owner operations page, with wallet-scoped position value, PnL, token references, liquidity/depth metrics, and a DEX-style price chart for the free-value token. The owner `property` route is again restricted to owned properties only.
 - Re-opened `PRD.md` before fixing duplicated listing keys. Attempted to open the required `./skill` folder and confirmed it still does not exist in this checkout; reviewed the available `./skills` folder and used `skills/best-practices/SKILL.md` plus `references/agent-principles.md`.
 - Fixed duplicate React keys in buyer dashboard, marketplace, and property offer history by replacing raw `listingId` keys with a composed listing identity based on local property, on-chain property id, listing id, and transaction hash. Listing detail navigation now uses the same composed id while preserving legacy `listingId` matching.
+
+## 2026-05-06
+
+- Merged `origin/codex/create-english-ui-branch-with-language-toggle` into `main` with a fast-forward merge. No conflicts were produced. Did not mark any milestone complete because milestone ticking requires explicit user confirmation.
 ## Progress Tracker
 
 | Milestone | Status | Notes | Updated At |
